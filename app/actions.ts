@@ -29,11 +29,11 @@ export async function createProject(formData: FormData) {
 
   if (error) {
     console.error('Error creating project:', error)
-    return { message: 'Failed to create project' }
+    return // Just return nothing on error
   }
 
   revalidatePath('/')
-  return { message: 'Success' }
+  // Return nothing on success
 }
 
 export async function signOut() {
