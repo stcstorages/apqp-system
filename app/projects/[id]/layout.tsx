@@ -33,7 +33,7 @@ export default async function ProjectLayout({
         </div>
       </header>
 
-      {/* Shared Tabs Navigation */}
+      {/* Shared Tabs Navigations */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <nav className="-mb-px flex space-x-8">
