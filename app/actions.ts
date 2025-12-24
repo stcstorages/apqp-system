@@ -63,3 +63,47 @@ export async function addProcessStep(formData: FormData) {
 
   revalidatePath(`/projects/${projectId}`)
 }
+// ... existing imports
+
+export async function addFmeaRow(formData: FormData) {
+  const supabase = await createClient()
+  
+  const stepId = formData.get('step_id') as string
+  const projectId = formData.get('project_id') as string // Needed for revalidation
+  
+  // Extract FMEA Data
+  const failure_mode = formData.get('failure_mode') as string
+  const failure_effect = formData.get('failure_effect') as string
+  const severity = parseInt(formData.get('severity') as string)
+  const cause = formData.get('cause') as string
+  const occurrence = parseInt(formData.get('occurrence') as string)
+  const current_controls = formData.get('current_controls') as string
+  const detection = parseInt(formData.get('detection') as string)
+
+  const { error } = await supabase.from('pfmea_records').insert({
+    step_id: stepId,
+    failure_mode,
+    failure_effect,
+    severity,
+    cause,
+    occurrence,
+    current_controls,
+    detection
+  })
+
+  if (error) {
+    console.error('Error adding FMEA row:', error)
+    return
+  }
+
+  revalidatePath(`/projects/${projectId}/fmea`)
+}
+
+export async function deleteFmeaRow(formData: FormData) {
+  const supabase = await createClient()
+  const rowId = formData.get('row_id') as string
+  const projectId = formData.get('project_id') as string
+
+  await supabase.from('pfmea_records').delete().eq('id', rowId)
+  revalidatePath(`/projects/${projectId}/fmea`)
+}
