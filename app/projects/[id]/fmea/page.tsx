@@ -9,7 +9,7 @@ export default async function FmeaPage({
   const { id } = await params
   const supabase = await createClient()
 
-  // 1. Fetch Process Steps (The Parents)
+  // 1. Fetch Process Stepss (The Parents)
   const { data: steps } = await supabase
     .from('process_steps')
     .select('*, pfmea_records(*)') // This connects the data!
