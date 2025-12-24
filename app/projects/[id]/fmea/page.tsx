@@ -9,7 +9,7 @@ export default async function FmeaPage({
   const { id } = await params
   const supabase = await createClient()
 
-  // 1. Fetch Process Stepsss (The Parents)
+  // 1. Fetch Process Steps (The Parents)
   const { data: steps } = await supabase
     .from('process_steps')
     .select('*, pfmea_records(*)') // This connects the data!
@@ -18,6 +18,7 @@ export default async function FmeaPage({
 
   return (
     <div className="space-y-8">
+      
       {/* PDF Export Button */}
       <div className="flex justify-end">
         <a 
@@ -29,10 +30,7 @@ export default async function FmeaPage({
           Export to PDF
         </a>
       </div>
-      
-      {/* ... the rest of your existing map loop ... */}
-    <div className="space-y-8">
-      
+
       {/* Loop through each Process Step */}
       {steps?.map((step) => (
         <div key={step.id} className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
