@@ -41,3 +41,25 @@ export async function signOut() {
   await supabase.auth.signOut()
   redirect('/login')
 }
+// ... existing imports and functions ...
+
+export async function addProcessStep(formData: FormData) {
+  const supabase = await createClient()
+  
+  const projectId = formData.get('project_id') as string
+  const stepNumber = formData.get('step_number') as string
+  const description = formData.get('description') as string
+
+  const { error } = await supabase.from('process_steps').insert({
+    project_id: projectId,
+    step_number: stepNumber,
+    description: description
+  })
+
+  if (error) {
+    console.error('Error adding step:', error)
+    return
+  }
+
+  revalidatePath(`/projects/${projectId}`)
+}
