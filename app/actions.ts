@@ -107,3 +107,49 @@ export async function deleteFmeaRow(formData: FormData) {
   await supabase.from('pfmea_records').delete().eq('id', rowId)
   revalidatePath(`/projects/${projectId}/fmea`)
 }
+// ... existing imports
+
+export async function addControlPlanRow(formData: FormData) {
+  const supabase = await createClient()
+  
+  const pfmeaId = formData.get('pfmea_id') as string
+  const projectId = formData.get('project_id') as string
+  
+  // Extract Control Plan Dataa
+  const char_product = formData.get('characteristic_product') as string
+  const char_process = formData.get('characteristic_process') as string
+  const spec = formData.get('specification_tolerance') as string
+  const eval_method = formData.get('eval_measurement_technique') as string
+  const sample_size = formData.get('sample_size') as string
+  const sample_freq = formData.get('sample_freq') as string
+  const control_method = formData.get('control_method') as string
+  const reaction_plan = formData.get('reaction_plan') as string
+
+  const { error } = await supabase.from('control_plan_records').insert({
+    pfmea_id: pfmeaId,
+    characteristic_product: char_product,
+    characteristic_process: char_process,
+    specification_tolerance: spec,
+    eval_measurement_technique: eval_method,
+    sample_size,
+    sample_freq,
+    control_method,
+    reaction_plan
+  })
+
+  if (error) {
+    console.error('Error adding CP row:', error)
+    return
+  }
+
+  revalidatePath(`/projects/${projectId}/control-plan`)
+}
+
+export async function deleteControlPlanRow(formData: FormData) {
+  const supabase = await createClient()
+  const rowId = formData.get('row_id') as string
+  const projectId = formData.get('project_id') as string
+
+  await supabase.from('control_plan_records').delete().eq('id', rowId)
+  revalidatePath(`/projects/${projectId}/control-plan`)
+}
