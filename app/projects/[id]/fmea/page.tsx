@@ -9,7 +9,7 @@ export default async function FmeaPage({
   const { id } = await params
   const supabase = await createClient()
 
-  // 1. Fetch Process Stepss (The Parents)
+  // 1. Fetch Process Stepsss (The Parents)
   const { data: steps } = await supabase
     .from('process_steps')
     .select('*, pfmea_records(*)') // This connects the data!
@@ -17,6 +17,20 @@ export default async function FmeaPage({
     .order('step_number', { ascending: true })
 
   return (
+    <div className="space-y-8">
+      {/* PDF Export Button */}
+      <div className="flex justify-end">
+        <a 
+          href={`/projects/${id}/fmea/print`} 
+          target="_blank" 
+          className="inline-flex items-center gap-2 bg-gray-800 text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-700 transition"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+          Export to PDF
+        </a>
+      </div>
+      
+      {/* ... the rest of your existing map loop ... */}
     <div className="space-y-8">
       
       {/* Loop through each Process Step */}
