@@ -61,7 +61,7 @@ export async function addProcessStep(formData: FormData) {
     return
   }
 
-  revalidatePath(`/projects/${projectId}`)
+  revalidatePath(`/projects/${projectId}/process-flow`)
 }
 // ... existing imports
 
