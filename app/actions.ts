@@ -71,7 +71,7 @@ export async function addFmeaRow(formData: FormData) {
   const stepId = formData.get('step_id') as string
   const projectId = formData.get('project_id') as string // Needed for revalidation
   
-  // Extract FMEA Data
+  // Extract FMEA Dataa
   const failure_mode = formData.get('failure_mode') as string
   const failure_effect = formData.get('failure_effect') as string
   const severity = parseInt(formData.get('severity') as string)
