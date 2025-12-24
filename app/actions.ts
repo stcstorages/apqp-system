@@ -115,7 +115,7 @@ export async function addControlPlanRow(formData: FormData) {
   const pfmeaId = formData.get('pfmea_id') as string
   const projectId = formData.get('project_id') as string
   
-  // Extract Control Plan Dataa
+  // Extract Control Plan Dataaa
   const char_product = formData.get('characteristic_product') as string
   const char_process = formData.get('characteristic_process') as string
   const spec = formData.get('specification_tolerance') as string
@@ -152,4 +152,40 @@ export async function deleteControlPlanRow(formData: FormData) {
 
   await supabase.from('control_plan_records').delete().eq('id', rowId)
   revalidatePath(`/projects/${projectId}/control-plan`)
+}
+// ... existing imports
+
+export async function addGanttTask(formData: FormData) {
+  const supabase = await createClient()
+  const projectId = formData.get('project_id') as string
+  
+  const name = formData.get('name') as string
+  const start = formData.get('start_date') as string
+  const end = formData.get('end_date') as string
+
+  // Default new tasks to 0% progress
+  await supabase.from('gantt_tasks').insert({
+    project_id: projectId,
+    name,
+    start_date: new Date(start).toISOString(),
+    end_date: new Date(end).toISOString(),
+    progress: 0,
+    type: 'task'
+  })
+
+  revalidatePath(`/projects/${projectId}/gantt`)
+}
+
+export async function updateGanttTask(task: any) {
+  // This function will be called via Client Component, so we just use the Supabase client directly there usually, 
+  // but for security we should use a Server Action.
+  const supabase = await createClient()
+  
+  await supabase.from('gantt_tasks').update({
+    start_date: task.start,
+    end_date: task.end,
+    progress: task.progress
+  }).eq('id', task.id)
+  
+  // Note: No revalidatePath needed here because the UI updates instantly on drag
 }
