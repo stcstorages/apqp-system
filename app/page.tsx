@@ -71,21 +71,23 @@ export default async function Dashboard() {
             )}
             
             {projects?.map((project) => (
-              <li key={project.id} className="flex justify-between gap-x-6 py-5 px-4 hover:bg-gray-50">
-                <div className="flex min-w-0 gap-x-4">
-                  <div className="min-w-0 flex-auto">
-                    <p className="text-sm font-semibold leading-6 text-gray-900">{project.name}</p>
-                    <p className="mt-1 truncate text-xs leading-5 text-gray-500">
-                      PN: {project.part_number} • Customer: {project.customer}
+              <li key={project.id} className="hover:bg-gray-50 transition">
+                <a href={`/projects/${project.id}`} className="flex justify-between gap-x-6 py-5 px-4 block">
+                  <div className="flex min-w-0 gap-x-4">
+                    <div className="min-w-0 flex-auto">
+                      <p className="text-sm font-semibold leading-6 text-blue-600 underline">{project.name}</p>
+                      <p className="mt-1 truncate text-xs leading-5 text-gray-500">
+                        PN: {project.part_number} • Customer: {project.customer}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="hidden shrink-0 sm:flex sm:flex-col sm:items-end">
+                    <p className="text-sm leading-6 text-gray-900 capitalize">Status: {project.status}</p>
+                    <p className="mt-1 text-xs leading-5 text-gray-500">
+                      Created {new Date(project.created_at).toLocaleDateString()}
                     </p>
                   </div>
-                </div>
-                <div className="hidden shrink-0 sm:flex sm:flex-col sm:items-end">
-                  <p className="text-sm leading-6 text-gray-900 capitalize">Status: {project.status}</p>
-                  <p className="mt-1 text-xs leading-5 text-gray-500">
-                    Created {new Date(project.created_at).toLocaleDateString()}
-                  </p>
-                </div>
+                </a>
               </li>
             ))}
           </ul>
