@@ -42,7 +42,7 @@ export default function GanttView({ tasks: initialTasks, projectId }: Props) {
   }
 
   const handleProgressChange = async (task: Task) => {
-    handleTaskChange(task) // Same logic
+    handleTaskChange(task) // Same logics
   }
 
   return (
