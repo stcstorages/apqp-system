@@ -37,7 +37,7 @@ export default async function ProjectLayout({
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <nav className="-mb-px flex space-x-8">
-            <Link href={`/projects/${id}`} className="hover:border-blue-500 hover:text-blue-600 border-transparent text-gray-500 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+            <Link href={`/projects/${id}/process-flow`} className="hover:border-blue-500 hover:text-blue-600 border-transparent text-gray-500 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
               1. Process Flow
             </Link>
             <Link href={`/projects/${id}/fmea`} className="hover:border-blue-500 hover:text-blue-600 border-transparent text-gray-500 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
