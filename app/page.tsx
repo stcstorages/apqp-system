@@ -5,7 +5,7 @@ import { createProject, signOut } from './actions'
 export default async function Dashboard() {
   const supabase = await createClient()
 
-  // 1. Check if user is logged in
+  // 1. Check if user is logged ins
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     redirect('/login')
