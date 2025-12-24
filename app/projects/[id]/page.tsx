@@ -40,7 +40,7 @@ export default async function ProjectHub({
           </div>
         </Link>
 
-        {/* Card 2: FMEA */}
+        {/* Card 2: FMEAs */}
         <Link href={`/projects/${id}/fmea`} className="group block">
           <div className="h-full bg-white rounded-lg shadow border border-gray-200 p-6 hover:border-red-500 hover:shadow-md transition cursor-pointer">
             <div className="flex items-center gap-4 mb-4">
