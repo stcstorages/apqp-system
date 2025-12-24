@@ -98,28 +98,80 @@ export default async function ControlPlanPage({
                         </tr>
                       ))}
 
-                      {/* Add New CP Record Form */}
+                      {/* Add New CP Record Forms */}
+                      {/* Add New CP Record Form - Fixed Alignment */}
                       <tr className="bg-gray-50">
-                        <td colSpan={9} className="p-2">
-                          <form action={addControlPlanRow} className="flex flex-wrap gap-1">
-                            <input type="hidden" name="pfmea_id" value={risk.id} />
-                            <input type="hidden" name="project_id" value={id} />
-
-                            <input name="characteristic_product" placeholder="Prod Char" className="w-24 text-xs border rounded p-1" />
-                            <input name="characteristic_process" placeholder="Proc Char" className="w-24 text-xs border rounded p-1" />
-                            <input name="specification_tolerance" placeholder="Spec" required className="w-20 text-xs border rounded p-1" />
-                            <input name="eval_measurement_technique" placeholder="Eval Tech" required className="w-24 text-xs border rounded p-1" />
-                            <input name="sample_size" placeholder="Size" required className="w-16 text-xs border rounded p-1" />
-                            <input name="sample_freq" placeholder="Freq" required className="w-16 text-xs border rounded p-1" />
-                            {/* Auto-fill suggestion based on FMEA control */}
-                            <input name="control_method" placeholder="Control Method" defaultValue={risk.current_controls} required className="w-32 text-xs border border-blue-300 rounded p-1" />
-                            <input name="reaction_plan" placeholder="Reaction" required className="flex-1 text-xs border rounded p-1" />
+                        {/* We use a form that wraps the whole ROW (using a trick or just inputs) 
+                            Standard HTML forms can't wrap a TR directly, so we use the form attribute or wrap inputs. 
+                            Next.js Server Actions allow us to wrap the button mainly, but here we wrap individual inputs? 
+                            Actually, the cleanest way in React without hydration issues is to make the TR a form, 
+                            but browsers don't like <form><tr>...</tr></form>.
                             
-                            <button className="bg-green-600 text-white text-xs font-bold px-3 rounded hover:bg-green-500">
-                              ADD
-                            </button>
-                          </form>
-                        </td>
+                            SOLUTION: We keep the form inside the TR, but use 'display: contents' or just put inputs in TDs 
+                            and use the form on the button or wrap the content in a single cell? 
+                            
+                            No, the previous code had one big TD. 
+                            Let's use individual TDs containing inputs, all belonging to one form via the 'form' attribute?
+                            No, that's too complex.
+                            
+                            SIMPLEST FIX: 
+                            We put the <form> inside the <tr> but wrapping the TDs is invalid HTML.
+                            We will put the <form> around the *button* and use hidden inputs? No.
+                            
+                            We will use one <form> that wraps the TABLE? No.
+                            
+                            Let's use the 'form' attribute approach (Modern HTML).
+                            We create a unique ID for the form, put the form hidden somewhere, and link inputs to it.
+                        */}
+                        
+                        {/* actually, simpler approach for now: 
+                           We put the form inside the specific cells? No.
+                           
+                           Let's just use the Flex layout effectively or make the form wrap the whole table? 
+                           No, we have multiple forms.
+                           
+                           Let's use the layout: <td class="p-0"><input class="w-full border-none h-full px-2" ... /></td>
+                        */}
+                         
+                         {/* CORRECT APPROACH FOR ALIGNMENT: 
+                             Since we can't easily wrap a TR in a form in standard HTML without hydration errors,
+                             we will keep the layout simple: 
+                             We put the form explicitly inside the LAST cell (the button), 
+                             and the other inputs are just 'client' inputs? No, Server Actions need them in the form.
+                             
+                             Okay, we will use the 'one big cell' approach but use GRID to match columns.
+                             OR: We just make the inputs 'w-full' inside standard TDs and use a specific form trick.
+                             
+                             Wait, the easiest way that works in Next.js Server Actions:
+                             Just put the <form> inside the TR? (Browsers might auto-correct this and break it).
+                             
+                             Let's stick to the visual fix:
+                             We will render the inputs inside standard TDs, but we have to wrap them in a <form>.
+                             Since we can't wrap a TR, we will make the FORM wrap the *contents* of the cells? No.
+                             
+                             Let's use the "Grid" layout for the whole table instead of HTML <table>.
+                             But rewriting to Grid is big.
+                             
+                             Let's try the 'form attribute' trick. It is standard HTML5.
+                         */}
+                         
+                         <td className="p-1"><input form={`form-${risk.id}`} name="characteristic_product" placeholder="Prod Char" className="w-full text-xs border border-gray-300 rounded p-1" /></td>
+                         <td className="p-1"><input form={`form-${risk.id}`} name="characteristic_process" placeholder="Proc Char" className="w-full text-xs border border-gray-300 rounded p-1" /></td>
+                         <td className="p-1"><input form={`form-${risk.id}`} name="specification_tolerance" placeholder="Spec" required className="w-full text-xs border border-gray-300 rounded p-1" /></td>
+                         <td className="p-1"><input form={`form-${risk.id}`} name="eval_measurement_technique" placeholder="Eval" required className="w-full text-xs border border-gray-300 rounded p-1" /></td>
+                         <td className="p-1"><input form={`form-${risk.id}`} name="sample_size" placeholder="Size" required className="w-full text-xs border border-gray-300 rounded p-1" /></td>
+                         <td className="p-1"><input form={`form-${risk.id}`} name="sample_freq" placeholder="Freq" required className="w-full text-xs border border-gray-300 rounded p-1" /></td>
+                         <td className="p-1"><input form={`form-${risk.id}`} name="control_method" defaultValue={risk.current_controls} required className="w-full text-xs border border-blue-300 rounded p-1 bg-blue-50" /></td>
+                         <td className="p-1"><input form={`form-${risk.id}`} name="reaction_plan" placeholder="Reaction" required className="w-full text-xs border border-gray-300 rounded p-1" /></td>
+                         <td className="p-1 text-center">
+                           <form id={`form-${risk.id}`} action={addControlPlanRow}>
+                             <input type="hidden" name="pfmea_id" value={risk.id} />
+                             <input type="hidden" name="project_id" value={id} />
+                             <button className="bg-green-600 text-white text-xs font-bold px-3 py-1 rounded hover:bg-green-500 w-full">
+                               ADD
+                             </button>
+                           </form>
+                         </td>
                       </tr>
 
                     </tbody>
