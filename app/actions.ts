@@ -163,7 +163,7 @@ export async function addGanttTask(formData: FormData) {
   const start = formData.get('start_date') as string
   const end = formData.get('end_date') as string
 
-  // Default new tasks to 0% progress
+  // Default new tasks to 0% progressss
   await supabase.from('gantt_tasks').insert({
     project_id: projectId,
     name,
@@ -188,4 +188,34 @@ export async function updateGanttTask(task: any) {
   }).eq('id', task.id)
   
   // Note: No revalidatePath needed here because the UI updates instantly on drag
+}
+// ... existing imports
+
+export async function updateProcessStep(formData: FormData) {
+  const supabase = await createClient()
+  const id = formData.get('step_id') as string
+  const projectId = formData.get('project_id') as string
+  const number = formData.get('step_number') as string
+  const desc = formData.get('description') as string
+
+  const { error } = await supabase.from('process_steps').update({
+    step_number: number,
+    description: desc
+  }).eq('id', id)
+
+  if (error) console.error('Error updating step:', error)
+
+  revalidatePath(`/projects/${projectId}/process-flow`)
+}
+
+export async function deleteProcessStep(formData: FormData) {
+  const supabase = await createClient()
+  const id = formData.get('step_id') as string
+  const projectId = formData.get('project_id') as string
+
+  const { error } = await supabase.from('process_steps').delete().eq('id', id)
+  
+  if (error) console.error('Error deleting step:', error)
+
+  revalidatePath(`/projects/${projectId}/process-flow`)
 }
