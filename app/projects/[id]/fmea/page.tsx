@@ -22,7 +22,7 @@ export default async function FmeaPage({
       {/* PDF Export Button */}
       <div className="flex justify-end">
         <a 
-          href={`/projects/${id}/fmea/print`} 
+          href={`/print/fmea/${id}`} 
           target="_blank" 
           className="inline-flex items-center gap-2 bg-gray-800 text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-700 transition"
         >
