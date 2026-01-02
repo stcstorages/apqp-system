@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
-import { addProcessStep } from '@/app/actions'
+// FAIL WAS HERE: We added updateProcessStep and deleteProcessStep to this list
+import { addProcessStep, updateProcessStep, deleteProcessStep } from '@/app/actions'
 
 export default async function ProcessFlowPage({
   params,
@@ -54,11 +55,8 @@ export default async function ProcessFlowPage({
           </form>
         </div>
 
-        {/* Right: Flow Listt */}
+        {/* Right: Flow List (Editable) */}
         <div className="md:col-span-2 bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-            <h3 className="text-lg font-medium leading-6 text-gray-900">Process Flow Chart</h3>
-          </div>
           <div className="bg-gray-50 p-4 border-b border-gray-200 flex justify-between text-xs font-bold text-gray-500 uppercase">
             <div className="w-16 text-center">Step No</div>
             <div className="flex-1 px-2">Description</div>
@@ -72,10 +70,6 @@ export default async function ProcessFlowPage({
 
             {steps?.map((step) => (
               <li key={step.id} className="p-2 hover:bg-gray-50 transition duration-150">
-                {/* 
-                   We wrap each row in a FORM so we can Edit/Delete directly.
-                   This creates an "Inline Edit" experience.
-                */}
                 <form action={updateProcessStep} className="flex items-center gap-2">
                   <input type="hidden" name="step_id" value={step.id} />
                   <input type="hidden" name="project_id" value={id} />
@@ -96,16 +90,16 @@ export default async function ProcessFlowPage({
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-1">
-                    {/* Update Button (Floppy Disk Icon) */}
+                    {/* Update Button */}
                     <button type="submit" className="p-1 text-blue-600 hover:bg-blue-100 rounded" title="Save Changes">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                     </button>
 
-                    {/* Delete Button (Trash Icon) - Uses formAction to override the main submitt */}
+                    {/* Delete Button */}
                     <button 
                       formAction={deleteProcessStep} 
                       className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded" 
-                      title="Delete Step (Warning: Deletes FMEA/CP data!)"
+                      title="Delete Step"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-2.001-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     </button>
