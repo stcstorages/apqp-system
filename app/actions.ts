@@ -219,3 +219,38 @@ export async function deleteProcessStep(formData: FormData) {
 
   revalidatePath(`/projects/${projectId}/process-flow`)
 }
+// ... existing imports
+
+export async function updateGanttTaskDetails(formData: FormData) {
+  const supabase = await createClient()
+  const id = formData.get('task_id') as string
+  const projectId = formData.get('project_id') as string
+  
+  const name = formData.get('name') as string
+  const start = formData.get('start_date') as string
+  const end = formData.get('end_date') as string
+  const progress = formData.get('progress') as string
+
+  const { error } = await supabase.from('gantt_tasks').update({
+    name,
+    start_date: new Date(start).toISOString(),
+    end_date: new Date(end).toISOString(),
+    progress: parseInt(progress)
+  }).eq('id', id)
+
+  if (error) console.error('Error updating task:', error)
+
+  revalidatePath(`/projects/${projectId}/gantt`)
+}
+
+export async function deleteGanttTask(formData: FormData) {
+  const supabase = await createClient()
+  const id = formData.get('task_id') as string
+  const projectId = formData.get('project_id') as string
+
+  const { error } = await supabase.from('gantt_tasks').delete().eq('id', id)
+  
+  if (error) console.error('Error deleting task:', error)
+
+  revalidatePath(`/projects/${projectId}/gantt`)
+}
