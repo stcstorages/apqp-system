@@ -50,28 +50,44 @@ export default async function ProcessFlowPrintPage({
           </tr>
         </thead>
         <tbody>
-          {steps?.map((step) => (
-            <tr key={step.id}>
-              <td className="border border-black p-2 text-center font-bold">{step.step_number}</td>
-              <td className="border border-black p-2 uppercase relative">
-                {step.description}
-                {/* Visual Line Connector */}
-                <div className="absolute left-[-10px] top-1/2 w-2 h-[1px] bg-black hidden print:block"></div>
-              </td>
-              <td className="border border-black p-1 text-center">
-                 {/* This uses the Component we made in Step 2 */}
-                 <FlowSymbol type={step.symbol_type || 'process'} />
-              </td>
-              <td className="border border-black p-2"></td>
-              <td className="border border-black p-2"></td>
-            </tr>
-          ))}
+          {steps?.map((step, index) => {
+            // Check if this is the last step (to hide the connector line going down)
+            const isLast = index === (steps.length - 1);
+            
+            return (
+              <tr key={step.id} className="relative">
+                <td className="border border-black p-2 text-center font-bold">{step.step_number}</td>
+                <td className="border border-black p-2 uppercase relative">
+                  {step.description}
+                  {/* Left-Side Connector: Connects description to symbol */}
+                  <div className="absolute left-[-1px] top-1/2 w-4 h-[1px] bg-black hidden print:block z-20"></div>
+                </td>
+                
+                {/* SYMBOL CELL WITH CONNECTOR LINES */}
+                <td className="border border-black p-1 text-center relative overflow-visible">
+                   
+                   {/* Vertical Connector Line */}
+                   {/* This line sits in the middle and goes down to the next cell */}
+                   {!isLast && (
+                     <div className="absolute left-1/2 top-1/2 w-[1px] h-[100%] bg-black -translate-x-1/2 z-0"></div>
+                   )}
+
+                   {/* The Symbol Itself (White background to cover the line) */}
+                   <div className="relative z-10 bg-white inline-block">
+                     <FlowSymbol type={step.symbol_type || 'process'} />
+                   </div>
+
+                </td>
+                <td className="border border-black p-2"></td>
+                <td className="border border-black p-2"></td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
 
       {/* FOOTER LEGEND */}
       <div className="border border-black text-[10px]">
-        
         {/* Legend Grid */}
         <div className="grid grid-cols-3 divide-x divide-black border-b border-black">
           {/* Col 1: Symbols */}
@@ -126,7 +142,7 @@ export default async function ProcessFlowPrintPage({
           </div>
         </div>
         
-        {/* Bottom Strip */}
+        {/* Bottom Strips */}
         <div className="flex justify-between p-1 px-2 bg-gray-100 text-[9px]">
            <div>ISSUE NO: 1</div>
            <div>REVISION NO: 0</div>
