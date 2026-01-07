@@ -1,5 +1,4 @@
 import { createClient } from '@/utils/supabase/server'
-// FAIL WAS HERE: We added updateProcessStep and deleteProcessStep to this list 1
 import { addProcessStep, updateProcessStep, deleteProcessStep } from '@/app/actions'
 
 export default async function ProcessFlowPage({
@@ -33,34 +32,51 @@ export default async function ProcessFlowPage({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Left: Input Form */}
+        {/* Left: ADD Input Form */}
         <div className="bg-white p-6 rounded-lg shadow h-fit">
           <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Add Process Step</h3>
           <p className="text-xs text-gray-500 mb-4">
-            These steps will automatically feed into your FMEA and Control Plan.
+            Select the correct symbol (Process, Inspection, etc).
           </p>
           <form action={addProcessStep} className="space-y-4">
             <input type="hidden" name="project_id" value={id} />
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Step No.</label>
-              <input name="step_number" placeholder="e.g. 10" required className="mt-1 block w-full rounded-md border border-gray-300 p-2 shadow-sm sm:text-sm" />
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Step No.</label>
+                <input name="step_number" placeholder="10" required className="mt-1 block w-full rounded-md border border-gray-300 p-2 shadow-sm sm:text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Symbol</label>
+                <select name="symbol_type" className="mt-1 block w-full rounded-md border border-gray-300 p-2 shadow-sm sm:text-sm bg-white" defaultValue="process">
+                  <option value="start">Start/End</option>
+                  <option value="process">Process (○)</option>
+                  <option value="inspection">Inspection (◇)</option>
+                  <option value="storage">Storage (▽)</option>
+                  <option value="transport">Transport (→)</option>
+                  <option value="delay">Delay (D)</option>
+                </select>
+              </div>
             </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700">Operation Description</label>
               <input name="description" placeholder="e.g. Injection Molding" required className="mt-1 block w-full rounded-md border border-gray-300 p-2 shadow-sm sm:text-sm" />
             </div>
+
             <button className="w-full rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500">
               Add Step +
             </button>
           </form>
         </div>
 
-        {/* Right: Flow List (Editable) */}
+        {/* Right: EDIT List */}
         <div className="md:col-span-2 bg-white rounded-lg shadow overflow-hidden">
           <div className="bg-gray-50 p-4 border-b border-gray-200 flex justify-between text-xs font-bold text-gray-500 uppercase">
-            <div className="w-16 text-center">Step No</div>
+            <div className="w-12 text-center">Step</div>
+            <div className="w-24 text-center">Symbol</div>
             <div className="flex-1 px-2">Description</div>
-            <div className="w-24 text-center">Actions</div>
+            <div className="w-16 text-center">Actions</div>
           </div>
           
           <ul role="list" className="divide-y divide-gray-200 max-h-[600px] overflow-y-auto">
@@ -78,8 +94,22 @@ export default async function ProcessFlowPage({
                   <input 
                     name="step_number" 
                     defaultValue={step.step_number} 
-                    className="w-16 text-center border-gray-300 rounded text-sm p-1 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-12 text-center border-gray-300 rounded text-sm p-1 focus:ring-blue-500 focus:border-blue-500"
                   />
+
+                  {/* Editable Symbol Selector - THIS WAS MISSING BEFORE */}
+                  <select 
+                    name="symbol_type" 
+                    defaultValue={step.symbol_type || 'process'} 
+                    className="w-24 text-xs border-gray-300 rounded p-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  >
+                    <option value="start">Start/End</option>
+                    <option value="process">Process</option>
+                    <option value="inspection">Inspection</option>
+                    <option value="storage">Storage</option>
+                    <option value="transport">Transport</option>
+                    <option value="delay">Delay</option>
+                  </select>
 
                   {/* Editable Description */}
                   <input 
@@ -90,12 +120,10 @@ export default async function ProcessFlowPage({
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-1">
-                    {/* Update Button */}
                     <button type="submit" className="p-1 text-blue-600 hover:bg-blue-100 rounded" title="Save Changes">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                     </button>
 
-                    {/* Delete Button */}
                     <button 
                       formAction={deleteProcessStep} 
                       className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded" 
