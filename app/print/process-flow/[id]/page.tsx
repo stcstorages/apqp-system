@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import FlowSymbol from '@/app/components/FlowSymbol'
+import SpecialSymbol from '@/app/components/SpecialSymbol'
 
 export default async function ProcessFlowPrintPage({
   params,
@@ -8,154 +9,151 @@ export default async function ProcessFlowPrintPage({
 }) {
   const { id } = await params
   const supabase = await createClient()
+  
   const { data: project } = await supabase.from('projects').select('*').eq('id', id).single()
+  
+  // Fetch steps AND the linked special characteristic info
   const { data: steps } = await supabase
     .from('process_steps')
-    .select('*')
+    .select(`
+      *,
+      special_characteristics (
+        name,
+        symbol_code,
+        description
+      )
+    `)
     .eq('project_id', id)
     .order('step_number', { ascending: true })
 
+  // Fetch library for the Legend
+  const { data: scLibrary } = await supabase.from('special_characteristics').select('*')
+
   return (
     <div className="min-h-screen bg-white text-black p-4 text-xs font-sans print-container">
-      {/* HEADER SECTION */}
+      {/* HEADER */}
       <div className="border border-black mb-1">
-        <div className="border-b border-black font-bold text-lg text-center p-2 uppercase tracking-wide">
+        <div className="border-b border-black font-bold text-lg text-center p-2 uppercase">
           Process and Inspection Flow Chart
         </div>
-        <div className="grid grid-cols-5 divide-x divide-black text-center">
-          <div className="bg-gray-100 font-bold p-1">MODEL</div>
-          <div className="bg-gray-100 font-bold p-1">CUSTOMER</div>
-          <div className="bg-gray-100 font-bold p-1">PART NAME</div>
-          <div className="bg-gray-100 font-bold p-1">PART NO</div>
-          <div className="bg-gray-100 font-bold p-1">DOC. NO.</div>
+        <div className="grid grid-cols-5 divide-x divide-black text-center bg-gray-100 font-bold border-b border-black">
+          <div className="p-1">MODEL</div>
+          <div className="p-1">CUSTOMER</div>
+          <div className="p-1">PART NAME</div>
+          <div className="p-1">PART NO</div>
+          <div className="p-1">DOC. NO.</div>
         </div>
-        <div className="grid grid-cols-5 divide-x divide-black text-center border-t border-black">
-          <div className="p-1 min-h-[30px] flex items-center justify-center">N/A</div>
-          <div className="p-1 flex items-center justify-center">{project.customer}</div>
-          <div className="p-1 flex items-center justify-center">{project.name}</div>
-          <div className="p-1 flex items-center justify-center">{project.part_number}</div>
-          <div className="p-1 flex items-center justify-center">STCS/PF/{project.part_number}</div>
+        <div className="grid grid-cols-5 divide-x divide-black text-center">
+          <div className="p-1">N/A</div>
+          <div className="p-1">{project.customer}</div>
+          <div className="p-1">{project.name}</div>
+          <div className="p-1">{project.part_number}</div>
+          <div className="p-1">STCS/PF/{project.part_number}</div>
         </div>
       </div>
 
-      {/* MAIN TABLE */}
+      {/* TABLE */}
       <table className="w-full border-collapse border border-black text-xs mb-4">
         <thead>
-          <tr className="bg-gray-200 text-center">
-            <th className="border border-black p-2 w-16">Step</th>
+          <tr className="bg-gray-100 text-center">
+            <th className="border border-black p-2 w-12">Step</th>
             <th className="border border-black p-2">Process / Operation Name</th>
             <th className="border border-black p-2 w-16">Symbol</th>
-            <th className="border border-black p-2 w-32">Characteristics</th>
+            <th className="border border-black p-2 w-24">Characteristics</th>
             <th className="border border-black p-2 w-32">Remarks / Freq</th>
           </tr>
         </thead>
         <tbody>
           {steps?.map((step, index) => {
-            // Check if this is the last step (to hide the connector line going down)
             const isLast = index === (steps.length - 1);
-            
             return (
-              <tr key={step.id} className="relative">
+              <tr key={step.id}>
                 <td className="border border-black p-2 text-center font-bold">{step.step_number}</td>
-                <td className="border border-black p-2 uppercase relative">
-                  {step.description}
-                  {/* Left-Side Connector: Connects description to symbol */}
-                  <div className="absolute left-[-1px] top-1/2 w-4 h-[1px] bg-black hidden print:block z-20"></div>
-                </td>
                 
-                {/* SYMBOL CELL WITH CONNECTOR LINES */}
-                <td className="border border-black p-1 text-center relative overflow-visible">
+                {/* Description + Connector to Symbol */}
+                <td className="border border-black p-2 uppercase relative pr-6">
+                  {step.description}
+                  {/* Horizontal Line connecting text to center symbol */}
+                  <div className="absolute right-0 top-1/2 w-full h-[1px] border-b border-black z-0 pointer-events-none opacity-20 hidden"></div>
+                </td>
+
+                {/* SYMBOL COLUMN - Fixed Connector Lines */}
+                <td className="border border-black p-0 text-center relative h-[50px] align-middle">
                    
-                   {/* Vertical Connector Line */}
-                   {/* This line sits in the middle and goes down to the next cell */}
+                   {/* Vertical Line: Goes from top to bottom of cell */}
+                   {/* We use 'before' and 'after' logic or simple absolute divs */}
+                   
+                   {/* Top Line (Connects from previous) - Skip for first item */}
+                   {index > 0 && (
+                     <div className="absolute top-0 left-1/2 w-[1px] h-1/2 bg-black -translate-x-1/2 z-0"></div>
+                   )}
+                   
+                   {/* Bottom Line (Connects to next) - Skip for last item */}
                    {!isLast && (
-                     <div className="absolute left-1/2 top-1/2 w-[1px] h-[100%] bg-black -translate-x-1/2 z-0"></div>
+                     <div className="absolute bottom-0 left-1/2 w-[1px] h-1/2 bg-black -translate-x-1/2 z-0"></div>
                    )}
 
-                   {/* The Symbol Itself (White background to cover the line) */}
-                   <div className="relative z-10 bg-white inline-block">
+                   {/* The Symbol (White BG to hide line passing through it) */}
+                   <div className="relative z-10 bg-white inline-block p-1">
                      <FlowSymbol type={step.symbol_type || 'process'} />
                    </div>
-
                 </td>
-                <td className="border border-black p-2"></td>
-                <td className="border border-black p-2"></td>
+
+                <td className="border border-black p-1 text-center">
+                  {step.special_characteristics && (
+                    <SpecialSymbol code={step.special_characteristics.symbol_code} />
+                  )}
+                </td>
+                <td className="border border-black p-2 text-center">{step.remarks}</td>
               </tr>
             )
           })}
         </tbody>
       </table>
 
-      {/* FOOTER LEGEND */}
+      {/* FOOTER LEGEND (Dynamic) */}
       <div className="border border-black text-[10px]">
-        {/* Legend Grid */}
         <div className="grid grid-cols-3 divide-x divide-black border-b border-black">
-          {/* Col 1: Symbols */}
+          {/* Symbols */}
           <div>
-            <div className="grid grid-cols-2 divide-x divide-y divide-black border-b border-black">
-              <div className="bg-gray-100 font-bold p-1 text-center">ITEM</div>
-              <div className="bg-gray-100 font-bold p-1 text-center">SYMBOL</div>
-            </div>
-            {[
-              { label: 'START/END', type: 'start' },
-              { label: 'PROCESS', type: 'process' },
-              { label: 'INSPECTION', type: 'inspection' },
-              { label: 'STORAGE', type: 'storage' },
-              { label: 'DELIVERY', type: 'transport' },
-            ].map((item, i) => (
-               <div key={i} className="grid grid-cols-2 divide-x divide-black border-b border-black last:border-b-0">
-                 <div className="p-1 pl-2">{item.label}</div>
-                 <div className="p-0.5"><FlowSymbol type={item.type} /></div>
-               </div>
-            ))}
+             <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">PROCESS SYMBOLS</div>
+             <div className="grid grid-cols-2 gap-1 p-2">
+                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="start"/></div> Start</div>
+                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="process"/></div> Process</div>
+                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="inspection"/></div> Insp.</div>
+                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="storage"/></div> Storage</div>
+             </div>
           </div>
-
-          {/* Col 2: Frequency / Keys */}
+          
+          {/* Special Characteristics (Dynamic from DB) */}
           <div>
-             <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">FREQUENCY</div>
-             <div className="p-1 text-center">AS PER CP</div>
-             <div className="bg-gray-100 font-bold p-1 text-center border-y border-black">KEY CHARACTERISTICS</div>
+             <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">KEY CHARACTERISTICS</div>
              <div className="p-2 space-y-1">
-               <div className="flex justify-between"><span>Safety</span> <span>(S)</span></div>
-               <div className="flex justify-between"><span>Fitment</span> <span>(F)</span></div>
-               <div className="flex justify-between"><span>Function</span> <span>(C)</span></div>
+               {scLibrary?.map(sc => (
+                 <div key={sc.id} className="flex justify-between items-center border-b border-gray-100 last:border-0">
+                    <span>{sc.name}</span>
+                    <SpecialSymbol code={sc.symbol_code} />
+                 </div>
+               ))}
+               {(!scLibrary || scLibrary.length === 0) && <div className="text-gray-400">No SC defined</div>}
              </div>
           </div>
 
-          {/* Col 3: Sign Offs */}
+          {/* Signatures */}
           <div className="flex flex-col">
              <div className="grid grid-cols-3 divide-x divide-black bg-gray-100 font-bold text-center border-b border-black">
-                <div className="p-1">PREPARED</div>
-                <div className="p-1">CHECKED</div>
-                <div className="p-1">APPROVED</div>
+                <div className="p-1">PREP</div>
+                <div className="p-1">CHECK</div>
+                <div className="p-1">APPR</div>
              </div>
              <div className="grid grid-cols-3 divide-x divide-black flex-1 min-h-[60px]">
-                <div></div>
-                <div></div>
-                <div></div>
-             </div>
-             <div className="grid grid-cols-3 divide-x divide-black text-center border-t border-black text-[9px]">
-                <div className="p-1">ENG</div>
-                <div className="p-1">QA MGR</div>
-                <div className="p-1">GM</div>
+                <div></div><div></div><div></div>
              </div>
           </div>
         </div>
-        
-        {/* Bottom Strips */}
-        <div className="flex justify-between p-1 px-2 bg-gray-100 text-[9px]">
-           <div>ISSUE NO: 1</div>
-           <div>REVISION NO: 0</div>
-           <div>DATE: {new Date().toLocaleDateString()}</div>
-        </div>
-
       </div>
 
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `window.onload = function() { window.print(); }`,
-        }}
-      />
+      <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
     </div>
   )
 }
