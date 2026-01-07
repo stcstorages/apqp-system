@@ -35,7 +35,7 @@ export async function signOut() {
   redirect('/login')
 }
 
-// --- PROCESS FLOW (Updated with Symbol) ---
+// --- PROCESS FLOW ACTIONS ---
 
 export async function addProcessStep(formData: FormData) {
   const supabase = await createClient()
@@ -43,13 +43,20 @@ export async function addProcessStep(formData: FormData) {
   const projectId = formData.get('project_id') as string
   const stepNumber = formData.get('step_number') as string
   const description = formData.get('description') as string
-  const symbolType = formData.get('symbol_type') as string // NEW
+  const symbolType = formData.get('symbol_type') as string
+  
+  // New Fields
+  const remarks = formData.get('remarks') as string
+  // Handle empty selection for special char
+  const specialCharId = formData.get('special_char_id') as string || null
 
   const { error } = await supabase.from('process_steps').insert({
     project_id: projectId,
     step_number: stepNumber,
     description: description,
-    symbol_type: symbolType // NEW
+    symbol_type: symbolType,
+    remarks: remarks,
+    special_char_id: specialCharId
   })
 
   if (error) { console.error('Error adding step:', error); return; }
@@ -61,29 +68,22 @@ export async function updateProcessStep(formData: FormData) {
   const supabase = await createClient()
   const id = formData.get('step_id') as string
   const projectId = formData.get('project_id') as string
+  
   const number = formData.get('step_number') as string
   const desc = formData.get('description') as string
-  const symbolType = formData.get('symbol_type') as string // NEW
+  const symbolType = formData.get('symbol_type') as string
+  const remarks = formData.get('remarks') as string
+  const specialCharId = formData.get('special_char_id') as string || null
 
   const { error } = await supabase.from('process_steps').update({
     step_number: number,
     description: desc,
-    symbol_type: symbolType // NEW
+    symbol_type: symbolType,
+    remarks: remarks,
+    special_char_id: specialCharId
   }).eq('id', id)
 
   if (error) console.error('Error updating step:', error)
-
-  revalidatePath(`/projects/${projectId}/process-flow`)
-}
-
-export async function deleteProcessStep(formData: FormData) {
-  const supabase = await createClient()
-  const id = formData.get('step_id') as string
-  const projectId = formData.get('project_id') as string
-
-  const { error } = await supabase.from('process_steps').delete().eq('id', id)
-  
-  if (error) console.error('Error deleting step:', error)
 
   revalidatePath(`/projects/${projectId}/process-flow`)
 }
