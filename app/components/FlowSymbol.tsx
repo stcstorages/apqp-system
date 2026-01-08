@@ -4,10 +4,10 @@ export default function FlowSymbol({ type }: { type: string }) {
   const strokeWidth = 1.5
 
   switch (type) {
-    case 'start': // Rounded Rectangle / Oval
+    case 'start': // Inverted Triangle (Based on your image)
       return (
         <svg viewBox="0 0 24 24" className="w-6 h-6 mx-auto text-black">
-          <rect x="2" y="6" width="20" height="12" rx="6" stroke={stroke} fill={fill} strokeWidth={strokeWidth} />
+          <polygon points="2,4 22,4 12,22" stroke={stroke} fill={fill} strokeWidth={strokeWidth} />
         </svg>
       )
     case 'process': // Circle
@@ -22,26 +22,29 @@ export default function FlowSymbol({ type }: { type: string }) {
           <polygon points="12,2 22,12 12,22 2,12" stroke={stroke} fill={fill} strokeWidth={strokeWidth} />
         </svg>
       )
-    case 'storage': // Triangle (Inverted)
+    case 'inprocess': // Diamond INSIDE Circle (New)
       return (
         <svg viewBox="0 0 24 24" className="w-6 h-6 mx-auto text-black">
-          <polygon points="2,4 22,4 12,22" stroke={stroke} fill={fill} strokeWidth={strokeWidth} />
+          {/* Outer Circle */}
+          <circle cx="12" cy="12" r="10" stroke={stroke} fill={fill} strokeWidth={strokeWidth} />
+          {/* Inner Diamond (slightly smaller) */}
+          <polygon points="12,4 20,12 12,20 4,12" stroke={stroke} fill={fill} strokeWidth={strokeWidth} />
         </svg>
       )
-    case 'transport': // Arrow
+    case 'storage': // Square (Based on your image)
       return (
         <svg viewBox="0 0 24 24" className="w-6 h-6 mx-auto text-black">
-           <path d="M2 12h14M13 5l7 7-7 7" stroke={stroke} fill={fill} strokeWidth={strokeWidth} />
+          <rect x="4" y="4" width="16" height="16" stroke={stroke} fill={fill} strokeWidth={strokeWidth} />
         </svg>
       )
-    case 'delay': // D-Shape
+    case 'delivery': // Pentagon Down / Document shape
       return (
         <svg viewBox="0 0 24 24" className="w-6 h-6 mx-auto text-black">
-          <path d="M4 4h8a8 8 0 0 1 0 16H4V4z" stroke={stroke} fill={fill} strokeWidth={strokeWidth} />
+          <path d="M4 2 h16 v12 l-8 8 l-8 -8 z" stroke={stroke} fill={fill} strokeWidth={strokeWidth} />
         </svg>
       )
     default:
-      // Default to Process (Circle) if unknown
+      // Default to Process
       return (
         <svg viewBox="0 0 24 24" className="w-6 h-6 mx-auto text-black">
           <circle cx="12" cy="12" r="9" stroke={stroke} fill={fill} strokeWidth={strokeWidth} />
