@@ -35,7 +35,7 @@ export async function signOut() {
   redirect('/login')
 }
 
-// --- PROCESS FLOW ACTIONSs ---//
+// --- PROCESS FLOW (Updated with Symbol & Special Char) ---
 
 export async function addProcessStep(formData: FormData) {
   const supabase = await createClient()
@@ -84,6 +84,18 @@ export async function updateProcessStep(formData: FormData) {
   }).eq('id', id)
 
   if (error) console.error('Error updating step:', error)
+
+  revalidatePath(`/projects/${projectId}/process-flow`)
+}
+
+export async function deleteProcessStep(formData: FormData) {
+  const supabase = await createClient()
+  const id = formData.get('step_id') as string
+  const projectId = formData.get('project_id') as string
+
+  const { error } = await supabase.from('process_steps').delete().eq('id', id)
+  
+  if (error) console.error('Error deleting step:', error)
 
   revalidatePath(`/projects/${projectId}/process-flow`)
 }
