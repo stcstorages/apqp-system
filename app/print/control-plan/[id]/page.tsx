@@ -48,8 +48,8 @@ export default async function ControlPlanPrintPage({
                  <div className="text-[8px] text-gray-500">Control Plan Number</div>
                  <div>{project.cp_number || '-'}</div>
               </div>
-              {/* Row 2 - TALLER (h-14) */}
-              <div className="border-b border-black p-1 h-14 flex flex-col justify-center">
+              {/* Row 2 - TALLER (h-14) - FIXED ALIGNMENT (Top) */}
+              <div className="border-b border-black p-1 h-14">
                  <div className="text-[8px] text-gray-500">Part Number/Latest Change Level</div>
                  <div>{project.part_number}</div>
               </div>
@@ -78,7 +78,7 @@ export default async function ControlPlanPrintPage({
                  <div className="text-[8px] text-gray-500">Key Contact/Phone</div>
                  <div>{project.key_contact || '-'}</div>
               </div>
-              {/* Row 2 - TALLER (h-14) for CORE TEAM */}
+              {/* Row 2 - TALLER (h-14) for CORE TEAM - Already Top Aligned */}
               <div className="border-b border-black p-1 h-14 overflow-hidden">
                  <div className="text-[8px] text-gray-500">Core Team</div>
                  <div className="text-[9px] leading-tight break-words whitespace-normal">
@@ -110,8 +110,8 @@ export default async function ControlPlanPrintPage({
                     <div>{project.cp_date_rev || '-'}</div>
                  </div>
               </div>
-              {/* Row 2 - TALLER (h-14) */}
-              <div className="border-b border-black p-1 h-14 flex flex-col justify-center">
+              {/* Row 2 - TALLER (h-14) - FIXED ALIGNMENT (Top) */}
+              <div className="border-b border-black p-1 h-14">
                  <div className="text-[8px] text-gray-500">Customer Engineering Approval/Date</div>
                  <div>{project.customer_eng_approval || '-'}</div>
               </div>
