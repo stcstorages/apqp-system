@@ -14,7 +14,7 @@ export default function FmeaRow({ risk, scLibrary, projectId }: Props) {
   const router = useRouter()
   const [isChanged, setIsChanged] = useState(false)
 
-  // Local State for all inputs
+  // Local State for all inputss
   const [mode, setMode] = useState(risk.failure_mode)
   const [effect, setEffect] = useState(risk.failure_effect)
   const [sev, setSev] = useState(risk.severity)
