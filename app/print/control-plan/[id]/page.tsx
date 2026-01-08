@@ -1,14 +1,13 @@
 import { createClient } from '@/utils/supabase/server'
 import SpecialSymbol from '@/app/components/SpecialSymbol'
+import CustomerLogo from '@/app/components/CustomerLogo'
 
-// Helper for DD-MMM-YYYY format
+// Format Date Helper (DD-MMM-YYYY)
 const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return '-'
-  return date.toLocaleDateString('en-GB', {
-    day: '2-digit', month: 'short', year: 'numeric'
-  }).replace(/ /g, '-')
+  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')
 }
 
 export default async function ControlPlanPrintPage({
@@ -38,7 +37,13 @@ export default async function ControlPlanPrintPage({
         }
       `}</style>
 
-      {/* HEADER */}
+      {/* LOGO HEADER */}
+      <div className="flex justify-between items-center mb-2">
+         <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
+         <CustomerLogo customer={project.customer} />
+      </div>
+
+      {/* AIAG HEADER */}
       <div className="mb-2 text-xs">
         <div className="font-bold text-lg text-center mb-2">CONTROL PLAN</div>
         
@@ -164,15 +169,23 @@ export default async function ControlPlanPrintPage({
                <tr key={cp.id || `${step.id}-${index}`}>
                  {index === 0 && (
                    <>
-                     <td className="border border-black p-1 text-center align-top font-bold bg-gray-50" rowSpan={cpRows.length}>{step.step_number}</td>
-                     <td className="border border-black p-1 align-top uppercase" rowSpan={cpRows.length}>{step.description}</td>
-                     <td className="border border-black p-1 align-top" rowSpan={cpRows.length}>{step.machine_tools}</td>
+                     <td className="border border-black p-1 text-center align-top font-bold bg-gray-50" rowSpan={cpRows.length}>
+                       {step.step_number}
+                     </td>
+                     <td className="border border-black p-1 align-top uppercase" rowSpan={cpRows.length}>
+                       {step.description}
+                     </td>
+                     <td className="border border-black p-1 align-top" rowSpan={cpRows.length}>
+                       {step.machine_tools}
+                     </td>
                    </>
                  )}
                  <td className="border border-black p-1 text-center">{index + 1}</td>
                  <td className="border border-black p-1">{cp.characteristic_product || ''}</td>
                  <td className="border border-black p-1">{cp.characteristic_process || ''}</td>
-                 <td className="border border-black p-1 text-center">{cp.symbolCode && <SpecialSymbol code={cp.symbolCode} />}</td>
+                 <td className="border border-black p-1 text-center">
+                    {cp.symbolCode && <SpecialSymbol code={cp.symbolCode} />}
+                 </td>
                  <td className="border border-black p-1">{cp.specification_tolerance || ''}</td>
                  <td className="border border-black p-1">{cp.eval_measurement_technique || ''}</td>
                  <td className="border border-black p-1 text-center">{cp.sample_size || ''}</td>
@@ -185,6 +198,7 @@ export default async function ControlPlanPrintPage({
           })}
         </tbody>
       </table>
+
       <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
     </div>
   )
