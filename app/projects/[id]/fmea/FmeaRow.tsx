@@ -47,52 +47,57 @@ export default function FmeaRow({ risk, scLibrary, projectId }: Props) {
 
   return (
     <tr className="hover:bg-blue-50 transition-colors group text-xs align-top">
-      <td className="p-0 hidden"><form id={`form-${risk.id}`} action={async (formData) => { await updateFmeaRow(formData); setIsChanged(false); router.refresh(); }}><input type="hidden" name="row_id" value={risk.id} /><input type="hidden" name="project_id" value={projectId} /></form></td>
+      <td className="p-0 hidden">
+        <form id={`form-${risk.id}`} action={async (formData) => { await updateFmeaRow(formData); setIsChanged(false); router.refresh(); }}>
+          <input type="hidden" name="row_id" value={risk.id} />
+          <input type="hidden" name="project_id" value={projectId} />
+        </form>
+      </td>
       
       {/* 1. Failure Mode */}
-      <td className="p-0 border-r"><textarea form={`form-${risk.id}`} name="failure_mode" value={mode} onChange={(e) => handleInput(setMode, e.target.value)} className="w-full h-full border-0 bg-transparent p-1 min-h-[60px] resize-none focus:ring-1 focus:ring-blue-500" /></td>
+      <td className="p-0 border-r min-w-[150px]"><textarea form={`form-${risk.id}`} name="failure_mode" value={mode} onChange={(e) => handleInput(setMode, e.target.value)} className="w-full h-full border-0 bg-transparent p-1 min-h-[60px] resize-none focus:ring-1 focus:ring-blue-500" /></td>
       
       {/* 2. Effect */}
-      <td className="p-0 border-r"><textarea form={`form-${risk.id}`} name="failure_effect" value={effect} onChange={(e) => handleInput(setEffect, e.target.value)} className="w-full h-full border-0 bg-transparent p-1 min-h-[60px] resize-none focus:ring-1 focus:ring-blue-500" /></td>
+      <td className="p-0 border-r min-w-[150px]"><textarea form={`form-${risk.id}`} name="failure_effect" value={effect} onChange={(e) => handleInput(setEffect, e.target.value)} className="w-full h-full border-0 bg-transparent p-1 min-h-[60px] resize-none focus:ring-1 focus:ring-blue-500" /></td>
       
       {/* 3. S */}
-      <td className="p-0 border-r w-8"><input form={`form-${risk.id}`} name="severity" type="number" value={sev} onChange={(e) => handleInput(setSev, e.target.value)} className="w-full h-full border-0 bg-transparent text-center font-bold focus:ring-1 focus:ring-blue-500" /></td>
+      <td className="p-0 border-r w-8"><input form={`form-${risk.id}`} name="severity" type="number" min="1" max="10" value={sev} onChange={(e) => handleInput(setSev, e.target.value)} className="w-full h-full border-0 bg-transparent text-center font-bold focus:ring-1 focus:ring-blue-500" /></td>
       
       {/* 4. Class */}
       <td className="p-0 border-r w-12"><select form={`form-${risk.id}`} name="special_char_id" value={classId} onChange={(e) => handleInput(setClassId, e.target.value)} className="w-full h-full border-0 bg-transparent text-center text-[10px] focus:ring-1 focus:ring-blue-500"><option value="">-</option>{scLibrary.map(sc => <option key={sc.id} value={sc.id}>{sc.symbol_code === 'circle_double_plus' ? 'S' : 'F'}</option>)}</select></td>
       
       {/* 5. Cause */}
-      <td className="p-0 border-r"><textarea form={`form-${risk.id}`} name="cause" value={cause} onChange={(e) => handleInput(setCause, e.target.value)} className="w-full h-full border-0 bg-transparent p-1 min-h-[60px] resize-none focus:ring-1 focus:ring-blue-500" /></td>
+      <td className="p-0 border-r min-w-[150px]"><textarea form={`form-${risk.id}`} name="cause" value={cause} onChange={(e) => handleInput(setCause, e.target.value)} className="w-full h-full border-0 bg-transparent p-1 min-h-[60px] resize-none focus:ring-1 focus:ring-blue-500" /></td>
       
       {/* 6. Prevention (New) */}
-      <td className="p-0 border-r bg-yellow-50"><textarea form={`form-${risk.id}`} name="control_prevention" value={prevention} onChange={(e) => handleInput(setPrevention, e.target.value)} className="w-full h-full border-0 bg-transparent p-1 min-h-[60px] resize-none focus:ring-1 focus:ring-blue-500" placeholder="Prev." /></td>
+      <td className="p-0 border-r min-w-[150px] bg-yellow-50"><textarea form={`form-${risk.id}`} name="control_prevention" value={prevention} onChange={(e) => handleInput(setPrevention, e.target.value)} className="w-full h-full border-0 bg-transparent p-1 min-h-[60px] resize-none focus:ring-1 focus:ring-blue-500" placeholder="Prev." /></td>
       
       {/* 7. O */}
       <td className="p-0 border-r w-8"><input form={`form-${risk.id}`} name="occurrence" type="number" value={occ} onChange={(e) => handleInput(setOcc, e.target.value)} className="w-full h-full border-0 bg-transparent text-center font-bold focus:ring-1 focus:ring-blue-500" /></td>
       
       {/* 8. Detection (Old 'Controls') */}
-      <td className="p-0 border-r"><textarea form={`form-${risk.id}`} name="current_controls" value={detectionControl} onChange={(e) => handleInput(setDetectionControl, e.target.value)} className="w-full h-full border-0 bg-transparent p-1 min-h-[60px] resize-none focus:ring-1 focus:ring-blue-500" placeholder="Det." /></td>
+      <td className="p-0 border-r min-w-[150px]"><textarea form={`form-${risk.id}`} name="current_controls" value={detectionControl} onChange={(e) => handleInput(setDetectionControl, e.target.value)} className="w-full h-full border-0 bg-transparent p-1 min-h-[60px] resize-none focus:ring-1 focus:ring-blue-500" placeholder="Det." /></td>
       
       {/* 9. D */}
       <td className="p-0 border-r w-8"><input form={`form-${risk.id}`} name="detection" type="number" value={det} onChange={(e) => handleInput(setDet, e.target.value)} className="w-full h-full border-0 bg-transparent text-center font-bold focus:ring-1 focus:ring-blue-500" /></td>
       
       {/* 10. RPN */}
-      <td className="p-1 border-r text-center font-black bg-gray-100">{rpn}</td>
+      <td className="p-1 border-r text-center font-black bg-gray-100 min-w-[40px]">{rpn}</td>
 
       {/* 11. Recommended Action */}
-      <td className="p-0 border-r"><textarea form={`form-${risk.id}`} name="recommended_actions" value={recAction} onChange={(e) => handleInput(setRecAction, e.target.value)} className="w-full h-full border-0 bg-transparent p-1 min-h-[60px] resize-none focus:ring-1 focus:ring-blue-500" /></td>
+      <td className="p-0 border-r min-w-[150px]"><textarea form={`form-${risk.id}`} name="recommended_actions" value={recAction} onChange={(e) => handleInput(setRecAction, e.target.value)} className="w-full h-full border-0 bg-transparent p-1 min-h-[60px] resize-none focus:ring-1 focus:ring-blue-500" /></td>
       
       {/* 12. Resp */}
-      <td className="p-0 border-r"><textarea form={`form-${risk.id}`} name="responsibility" value={resp} onChange={(e) => handleInput(setResp, e.target.value)} className="w-full h-full border-0 bg-transparent p-1 min-h-[60px] resize-none focus:ring-1 focus:ring-blue-500" /></td>
+      <td className="p-0 border-r min-w-[100px]"><textarea form={`form-${risk.id}`} name="responsibility" value={resp} onChange={(e) => handleInput(setResp, e.target.value)} className="w-full h-full border-0 bg-transparent p-1 min-h-[60px] resize-none focus:ring-1 focus:ring-blue-500" /></td>
       
       {/* 13. Actions Taken */}
-      <td className="p-0 border-r"><textarea form={`form-${risk.id}`} name="action_taken" value={actTaken} onChange={(e) => handleInput(setActTaken, e.target.value)} className="w-full h-full border-0 bg-transparent p-1 min-h-[60px] resize-none focus:ring-1 focus:ring-blue-500" /></td>
+      <td className="p-0 border-r min-w-[150px]"><textarea form={`form-${risk.id}`} name="action_taken" value={actTaken} onChange={(e) => handleInput(setActTaken, e.target.value)} className="w-full h-full border-0 bg-transparent p-1 min-h-[60px] resize-none focus:ring-1 focus:ring-blue-500" /></td>
 
       {/* 14. New RPN (S, O, D, RPN) */}
       <td className="p-0 border-r w-8"><input form={`form-${risk.id}`} name="act_severity" type="number" value={actSev} onChange={(e) => handleInput(setActSev, e.target.value)} className="w-full h-full border-0 bg-transparent text-center font-bold text-gray-500 focus:text-black" placeholder="S" /></td>
       <td className="p-0 border-r w-8"><input form={`form-${risk.id}`} name="act_occurrence" type="number" value={actOcc} onChange={(e) => handleInput(setActOcc, e.target.value)} className="w-full h-full border-0 bg-transparent text-center font-bold text-gray-500 focus:text-black" placeholder="O" /></td>
       <td className="p-0 border-r w-8"><input form={`form-${risk.id}`} name="act_detection" type="number" value={actDet} onChange={(e) => handleInput(setActDet, e.target.value)} className="w-full h-full border-0 bg-transparent text-center font-bold text-gray-500 focus:text-black" placeholder="D" /></td>
-      <td className="p-1 border-r text-center font-bold bg-gray-50 text-[10px]">{newRpn || '-'}</td>
+      <td className="p-1 border-r text-center font-bold bg-gray-50 text-[10px] min-w-[40px]">{newRpn || '-'}</td>
 
       {/* Buttons */}
       <td className="p-1 text-center w-8 align-middle">
