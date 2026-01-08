@@ -77,17 +77,12 @@ export default async function ProcessFlowPrintPage({
               <tr key={step.id}>
                 <td className="border border-black p-2 text-center font-bold">{step.step_number}</td>
                 
-                {/* Description Column */}
-                <td className="border border-black p-0 relative">
-                  {/* Wrapper to align text and connector line */}
-                  <div className="relative h-full w-full p-2 flex items-center">
-                    <span className="uppercase z-10 bg-white pr-2">{step.description}</span>
-                    {/* Horizontal Connector Line (Text to Symbol) */}
-                    <div className="absolute right-0 top-1/2 w-full h-[1px] border-b border-black z-0"></div>
-                  </div>
+                {/* Description Column - CLEANED (No Horizontal Line) */}
+                <td className="border border-black p-2 uppercase align-middle">
+                  {step.description}
                 </td>
 
-                {/* SYMBOL COLUMN - Fixed with Wrapper Div */}
+                {/* SYMBOL COLUMN - Vertical Lines Only */}
                 <td className="border border-black p-0 h-[50px]">
                    <div className="relative h-full w-full flex items-center justify-center">
                      
@@ -101,7 +96,7 @@ export default async function ProcessFlowPrintPage({
                        <div className="absolute bottom-0 left-1/2 h-1/2 border-l border-black -translate-x-1/2" style={{ borderColor: '#000', borderWidth: '0 0 0 1px' }}></div>
                      )}
 
-                     {/* The Symbol (White BG to hide the crossing lines) */}
+                     {/* The Symbol (White BG to hide the crossing vertical line) */}
                      <div className="relative z-10 bg-white p-1">
                        <FlowSymbol type={step.symbol_type || 'process'} />
                      </div>
@@ -113,7 +108,6 @@ export default async function ProcessFlowPrintPage({
                   {step.special_characteristics && (
                     <div className="flex justify-center items-center gap-2">
                        <SpecialSymbol code={step.special_characteristics.symbol_code} />
-                       {/* Optional: Show name if needed, or just symbol */}
                     </div>
                   )}
                 </td>
