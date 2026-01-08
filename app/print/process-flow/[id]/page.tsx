@@ -63,13 +63,12 @@ export default async function ProcessFlowPrintPage({
       <table className="w-full border-collapse border border-black text-xs mb-4 table-fixed">
         <thead>
           <tr className="bg-gray-100 text-center">
-            <th className="border border-black p-2 w-10">Step</th>
-            {/* Process Name: Fixed width, forcing wrap */}
+            {/* WIDENED Step Column to prevent overlap */}
+            <th className="border border-black p-2 w-16">Step</th>
             <th className="border border-black p-2 w-48">Process / Operation Name</th>
-            {/* Symbol: WIDENED to w-36 (~144px) for clear Reject logic */}
+            {/* Maintained Symbol Width */}
             <th className="border border-black p-2 w-36">Symbol</th>
             <th className="border border-black p-2 w-10">SC</th>
-            {/* Remarks: Takes remaining space */}
             <th className="border border-black p-2">Remarks / Freq</th>
           </tr>
         </thead>
@@ -83,53 +82,53 @@ export default async function ProcessFlowPrintPage({
                 {/* 1. Step */}
                 <td className="border border-black p-2 text-center font-bold align-middle">{step.step_number}</td>
                 
-                {/* 2. Description - Added break-words to ensure wrapping */}
+                {/* 2. Description */}
                 <td className="border border-black p-2 uppercase align-middle break-words whitespace-normal">
                   <RichText content={step.description} />
                 </td>
 
-                {/* 3. SYMBOL COLUMN */}
+                {/* 3. SYMBOL COLUMN (Shift-Right Layout) */}
                 <td className="border border-black p-0 h-[80px] align-middle relative overflow-visible">
                    
-                   {/* Top Line */}
+                   {/* VERTICAL LINE: Moved to 75% (Right Side) */}
                    {index > 0 && (
                      <div 
-                       className="absolute left-1/2 top-0 w-[1px] bg-black -translate-x-1/2 z-0" 
+                       className="absolute left-3/4 top-0 w-[1px] bg-black -translate-x-1/2 z-0" 
                        style={{ height: '50%' }}
                      ></div>
                    )}
                    
-                   {/* Bottom Line */}
                    {!isLast && (
                      <div 
-                       className="absolute left-1/2 top-1/2 w-[1px] bg-black -translate-x-1/2 z-0" 
+                       className="absolute left-3/4 top-1/2 w-[1px] bg-black -translate-x-1/2 z-0" 
                        style={{ height: '50%' }}
                      ></div>
                    )}
 
-                   {/* OK Label */}
+                   {/* OK Label (Moved to Right of line) */}
                    {isInspection && !isLast && (
-                      <div className="absolute left-[55%] bottom-[5%] text-[8px] font-bold bg-white px-0.5 z-20">OK</div>
+                      <div className="absolute left-[78%] bottom-[5%] text-[8px] font-bold bg-white px-0.5 z-20">OK</div>
                    )}
 
                    {/* --- NG / REJECT BRANCH LOGIC --- */}
                    {isInspection && (
                      <>
-                        {/* 1. Horizontal Line: From Box (45px) to Center Line (50%) */}
-                        <div className="absolute top-1/2 left-[45px] right-[50%] h-[1px] bg-black z-0"></div>
+                        {/* 1. Horizontal Line: From Reject Box (45px) to Main Line (75%) */}
+                        {/* This gives a nice long line for the "NG" text */}
+                        <div className="absolute top-1/2 left-[45px] right-[25%] h-[1px] bg-black z-0"></div>
                         
-                        {/* 2. NG Label: Positioned explicitly using pixels to avoid overlap */}
-                        <div className="absolute top-[35%] left-[55px] text-[8px] font-bold bg-white px-0.5 z-20">NG</div>
+                        {/* 2. NG Label: Sitting in the middle of the empty space */}
+                        <div className="absolute top-[35%] left-[45%] text-[8px] font-bold bg-white px-0.5 z-20">NG</div>
 
-                        {/* 3. REJECT BOX: Fixed Left Position */}
-                        <div className="absolute top-1/2 left-1 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-2 py-1 z-20 border border-black shadow-sm">
+                        {/* 3. REJECT BOX: Anchored Left (No collision now) */}
+                        <div className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-2 py-1 z-20 border border-black shadow-sm">
                           REJECT
                         </div>
                      </>
                    )}
 
-                   {/* The Main Symbol */}
-                   <div className="relative z-10 flex justify-center items-center h-full w-full pointer-events-none">
+                   {/* The Main Symbol: Moved to 75% */}
+                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 pl-[50%]">
                      <div className="bg-white p-1">
                         <FlowSymbol type={step.symbol_type || 'process'} />
                      </div>
@@ -145,7 +144,7 @@ export default async function ProcessFlowPrintPage({
                   )}
                 </td>
                 
-                {/* 5. Remarks - Allowed to expand */}
+                {/* 5. Remarks */}
                 <td className="border border-black p-2 align-top break-words whitespace-normal">
                   <RichText content={step.remarks} />
                 </td>
