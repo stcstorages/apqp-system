@@ -31,6 +31,52 @@ export async function createProject(formData: FormData) {
   revalidatePath('/')
 }
 
+export async function updateProjectDetails(formData: FormData) {
+  const supabase = await createClient()
+  const projectId = formData.get('project_id') as string
+  
+  // Basic Info
+  const name = formData.get('name') as string
+  const part_number = formData.get('part_number') as string
+  const customer = formData.get('customer') as string
+
+  // Document Control Info
+  const cp_number = formData.get('cp_number') as string
+  const key_contact = formData.get('key_contact') as string
+  const core_team = formData.get('core_team') as string
+  const cp_phase = formData.get('cp_phase') as string
+  
+  // Dates
+  const date_orig = formData.get('date_orig') as string || null
+  const date_rev = formData.get('date_rev') as string || null
+  const customer_eng_approval = formData.get('customer_eng_approval') as string || null
+  const customer_quality_approval = formData.get('customer_quality_approval') as string || null
+  const other_approval = formData.get('other_approval') as string || null
+
+  const { error } = await supabase.from('projects').update({
+    name,
+    part_number,
+    customer,
+    cp_number,
+    key_contact,
+    core_team,
+    cp_phase,
+    date_orig,
+    date_rev,
+    customer_eng_approval,
+    customer_quality_approval,
+    other_approval
+  }).eq('id', projectId)
+
+  if (error) console.error('Error updating project details:', error)
+
+  // Revalidate ALL project pages
+  revalidatePath(`/projects/${projectId}`)
+  revalidatePath(`/projects/${projectId}/fmea`)
+  revalidatePath(`/projects/${projectId}/control-plan`)
+  revalidatePath(`/projects/${projectId}/process-flow`)
+}
+
 export async function signOut() {
   const supabase = await createClient()
   await supabase.auth.signOut()
@@ -51,7 +97,7 @@ export async function addProcessStep(formData: FormData) {
   
   const remarks = formData.get('remarks') as string
   const specialCharId = formData.get('special_char_id') as string || null
-  const machineTools = formData.get('machine_tools') as string || null // AIAG Update
+  const machineTools = formData.get('machine_tools') as string || null
 
   const { error } = await supabase.from('process_steps').insert({
     project_id: projectId,
@@ -65,7 +111,6 @@ export async function addProcessStep(formData: FormData) {
 
   if (error) { console.error('Error adding step:', error); return; }
 
-  // Revalidate both Flow and Control Plan as they share data
   revalidatePath(`/projects/${projectId}/process-flow`)
   revalidatePath(`/projects/${projectId}/control-plan`)
 }
@@ -80,7 +125,7 @@ export async function updateProcessStep(formData: FormData) {
   const symbolType = formData.get('symbol_type') as string
   const remarks = formData.get('remarks') as string
   const specialCharId = formData.get('special_char_id') as string || null
-  const machineTools = formData.get('machine_tools') as string || null // AIAG Update
+  const machineTools = formData.get('machine_tools') as string || null
 
   const { error } = await supabase.from('process_steps').update({
     step_number: number,
@@ -119,20 +164,17 @@ export async function addFmeaRow(formData: FormData) {
   const stepId = formData.get('step_id') as string
   const projectId = formData.get('project_id') as string
   
-  // Basic Info
   const failure_mode = formData.get('failure_mode') as string
   const failure_effect = formData.get('failure_effect') as string
   const severity = parseInt(formData.get('severity') as string) || 0
   const specialCharId = formData.get('special_char_id') as string || null
   const cause = formData.get('cause') as string
   
-  // Prevention & Detection
   const control_prevention = formData.get('control_prevention') as string
   const occurrence = parseInt(formData.get('occurrence') as string) || 0
-  const current_controls = formData.get('current_controls') as string // Detection Control
+  const current_controls = formData.get('current_controls') as string
   const detection = parseInt(formData.get('detection') as string) || 0
   
-  // Actions & Results
   const recommended_actions = formData.get('recommended_actions') as string
   const responsibility = formData.get('responsibility') as string
   const action_taken = formData.get('action_taken') as string
@@ -235,7 +277,7 @@ export async function addControlPlanRow(formData: FormData) {
   const sample_freq = formData.get('sample_freq') as string
   const control_method = formData.get('control_method') as string
   const reaction_plan = formData.get('reaction_plan') as string
-  const reaction_owner = formData.get('reaction_owner') as string // AIAG Update
+  const reaction_owner = formData.get('reaction_owner') as string
 
   const { error } = await supabase.from('control_plan_records').insert({
     pfmea_id: pfmeaId,
@@ -247,7 +289,7 @@ export async function addControlPlanRow(formData: FormData) {
     sample_freq,
     control_method,
     reaction_plan,
-    reaction_owner // AIAG Update
+    reaction_owner
   })
 
   if (error) { console.error('Error adding CP row:', error); return; }
