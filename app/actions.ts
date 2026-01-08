@@ -4,7 +4,9 @@ import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-// --- AUTH & PROJECT ---
+// ==========================================
+// 1. AUTH & PROJECT MANAGEMENT
+// ==========================================
 
 export async function createProject(formData: FormData) {
   const supabase = await createClient()
@@ -35,7 +37,9 @@ export async function signOut() {
   redirect('/login')
 }
 
-// --- PROCESS FLOW (Updated with Symbol & Special Char) ---
+// ==========================================
+// 2. PROCESS FLOW ACTIONS
+// ==========================================
 
 export async function addProcessStep(formData: FormData) {
   const supabase = await createClient()
@@ -45,10 +49,9 @@ export async function addProcessStep(formData: FormData) {
   const description = formData.get('description') as string
   const symbolType = formData.get('symbol_type') as string
   
-  // New Fields
   const remarks = formData.get('remarks') as string
-  // Handle empty selection for special char
   const specialCharId = formData.get('special_char_id') as string || null
+  const machineTools = formData.get('machine_tools') as string || null // AIAG Update
 
   const { error } = await supabase.from('process_steps').insert({
     project_id: projectId,
@@ -56,12 +59,15 @@ export async function addProcessStep(formData: FormData) {
     description: description,
     symbol_type: symbolType,
     remarks: remarks,
-    special_char_id: specialCharId
+    special_char_id: specialCharId,
+    machine_tools: machineTools
   })
 
   if (error) { console.error('Error adding step:', error); return; }
 
+  // Revalidate both Flow and Control Plan as they share data
   revalidatePath(`/projects/${projectId}/process-flow`)
+  revalidatePath(`/projects/${projectId}/control-plan`)
 }
 
 export async function updateProcessStep(formData: FormData) {
@@ -74,18 +80,21 @@ export async function updateProcessStep(formData: FormData) {
   const symbolType = formData.get('symbol_type') as string
   const remarks = formData.get('remarks') as string
   const specialCharId = formData.get('special_char_id') as string || null
+  const machineTools = formData.get('machine_tools') as string || null // AIAG Update
 
   const { error } = await supabase.from('process_steps').update({
     step_number: number,
     description: desc,
     symbol_type: symbolType,
     remarks: remarks,
-    special_char_id: specialCharId
+    special_char_id: specialCharId,
+    machine_tools: machineTools
   }).eq('id', id)
 
   if (error) console.error('Error updating step:', error)
 
   revalidatePath(`/projects/${projectId}/process-flow`)
+  revalidatePath(`/projects/${projectId}/control-plan`)
 }
 
 export async function deleteProcessStep(formData: FormData) {
@@ -100,7 +109,9 @@ export async function deleteProcessStep(formData: FormData) {
   revalidatePath(`/projects/${projectId}/process-flow`)
 }
 
-// --- FMEA ACTIONS ---
+// ==========================================
+// 3. FMEA ACTIONS
+// ==========================================
 
 export async function addFmeaRow(formData: FormData) {
   const supabase = await createClient()
@@ -108,19 +119,20 @@ export async function addFmeaRow(formData: FormData) {
   const stepId = formData.get('step_id') as string
   const projectId = formData.get('project_id') as string
   
+  // Basic Info
   const failure_mode = formData.get('failure_mode') as string
   const failure_effect = formData.get('failure_effect') as string
   const severity = parseInt(formData.get('severity') as string) || 0
   const specialCharId = formData.get('special_char_id') as string || null
   const cause = formData.get('cause') as string
   
-  // New / Split Columns
+  // Prevention & Detection
   const control_prevention = formData.get('control_prevention') as string
   const occurrence = parseInt(formData.get('occurrence') as string) || 0
-  const current_controls = formData.get('current_controls') as string // Detection
+  const current_controls = formData.get('current_controls') as string // Detection Control
   const detection = parseInt(formData.get('detection') as string) || 0
   
-  // Action Results
+  // Actions & Results
   const recommended_actions = formData.get('recommended_actions') as string
   const responsibility = formData.get('responsibility') as string
   const action_taken = formData.get('action_taken') as string
@@ -137,7 +149,7 @@ export async function addFmeaRow(formData: FormData) {
     cause,
     control_prevention,
     occurrence,
-    current_controls, // Acts as Detection Control
+    current_controls,
     detection,
     recommended_actions,
     responsibility,
@@ -157,7 +169,6 @@ export async function updateFmeaRow(formData: FormData) {
   const id = formData.get('row_id') as string
   const projectId = formData.get('project_id') as string
   
-  // Extract all fields
   const failure_mode = formData.get('failure_mode') as string
   const failure_effect = formData.get('failure_effect') as string
   const severity = parseInt(formData.get('severity') as string) || 0
@@ -206,7 +217,9 @@ export async function deleteFmeaRow(formData: FormData) {
   revalidatePath(`/projects/${projectId}/fmea`)
 }
 
-// --- CONTROL PLAN ---
+// ==========================================
+// 4. CONTROL PLAN ACTIONS
+// ==========================================
 
 export async function addControlPlanRow(formData: FormData) {
   const supabase = await createClient()
@@ -222,6 +235,7 @@ export async function addControlPlanRow(formData: FormData) {
   const sample_freq = formData.get('sample_freq') as string
   const control_method = formData.get('control_method') as string
   const reaction_plan = formData.get('reaction_plan') as string
+  const reaction_owner = formData.get('reaction_owner') as string // AIAG Update
 
   const { error } = await supabase.from('control_plan_records').insert({
     pfmea_id: pfmeaId,
@@ -232,7 +246,8 @@ export async function addControlPlanRow(formData: FormData) {
     sample_size,
     sample_freq,
     control_method,
-    reaction_plan
+    reaction_plan,
+    reaction_owner // AIAG Update
   })
 
   if (error) { console.error('Error adding CP row:', error); return; }
@@ -249,7 +264,9 @@ export async function deleteControlPlanRow(formData: FormData) {
   revalidatePath(`/projects/${projectId}/control-plan`)
 }
 
-// --- GANTT CHART ---
+// ==========================================
+// 5. GANTT CHART ACTIONS
+// ==========================================
 
 export async function addGanttTask(formData: FormData) {
   const supabase = await createClient()
