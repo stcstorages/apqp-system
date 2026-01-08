@@ -14,13 +14,20 @@ export async function createProject(formData: FormData) {
 
   if (!user) { redirect('/login') }
 
-  const name = formData.get('name') as string
+  // Get Form Data based on your new requirements
+  const name = formData.get('name') as string // Project Name
+  const model = formData.get('model') as string
+  const part_name = formData.get('part_name') as string
   const part_number = formData.get('part_number') as string
+  const product_type = formData.get('category') as string // Category
   const customer = formData.get('customer') as string
 
   const { error } = await supabase.from('projects').insert({
     name,
+    model,
+    part_name,
     part_number,
+    product_type, // Storing Category here
     customer,
     owner_id: user.id,
     status: 'draft'
