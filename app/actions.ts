@@ -35,46 +35,53 @@ export async function updateProjectDetails(formData: FormData) {
   const supabase = await createClient()
   const projectId = formData.get('project_id') as string
   
-  // Basic Info
+  // 1. General Info
   const name = formData.get('name') as string
   const part_number = formData.get('part_number') as string
   const customer = formData.get('customer') as string
+  const model = formData.get('model') as string // NEW
+  const drawing_number = formData.get('drawing_number') as string // NEW
 
-  // Document Control Info
+  // 2. Process Flow Doc Control
+  const flow_phase = formData.get('flow_phase') as string
+  const flow_number = formData.get('flow_number') as string
+  const flow_date_orig = formData.get('flow_date_orig') as string || null
+  const flow_date_rev = formData.get('flow_date_rev') as string || null
+
+  // 3. PFMEA Doc Control
+  const pfmea_phase = formData.get('pfmea_phase') as string
+  const pfmea_number = formData.get('pfmea_number') as string
+  const pfmea_date_orig = formData.get('pfmea_date_orig') as string || null
+  const pfmea_date_rev = formData.get('pfmea_date_rev') as string || null
+
+  // 4. Control Plan Doc Control
+  const cp_phase = formData.get('cp_phase') as string
   const cp_number = formData.get('cp_number') as string
+  const cp_date_orig = formData.get('cp_date_orig') as string || null
+  const cp_date_rev = formData.get('cp_date_rev') as string || null
+
+  // 5. Shared/General Team Info
   const key_contact = formData.get('key_contact') as string
   const core_team = formData.get('core_team') as string
-  const cp_phase = formData.get('cp_phase') as string
-  
-  // Dates
-  const date_orig = formData.get('date_orig') as string || null
-  const date_rev = formData.get('date_rev') as string || null
   const customer_eng_approval = formData.get('customer_eng_approval') as string || null
   const customer_quality_approval = formData.get('customer_quality_approval') as string || null
   const other_approval = formData.get('other_approval') as string || null
 
   const { error } = await supabase.from('projects').update({
-    name,
-    part_number,
-    customer,
-    cp_number,
-    key_contact,
-    core_team,
-    cp_phase,
-    date_orig,
-    date_rev,
-    customer_eng_approval,
-    customer_quality_approval,
-    other_approval
+    name, part_number, customer, model, drawing_number,
+    flow_phase, flow_number, flow_date_orig, flow_date_rev,
+    pfmea_phase, pfmea_number, pfmea_date_orig, pfmea_date_rev,
+    cp_phase, cp_number, cp_date_orig, cp_date_rev,
+    key_contact, core_team,
+    customer_eng_approval, customer_quality_approval, other_approval
   }).eq('id', projectId)
 
   if (error) console.error('Error updating project details:', error)
 
-  // Revalidate ALL project pages
   revalidatePath(`/projects/${projectId}`)
+  revalidatePath(`/projects/${projectId}/process-flow`)
   revalidatePath(`/projects/${projectId}/fmea`)
   revalidatePath(`/projects/${projectId}/control-plan`)
-  revalidatePath(`/projects/${projectId}/process-flow`)
 }
 
 export async function signOut() {
