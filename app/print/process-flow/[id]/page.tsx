@@ -65,6 +65,7 @@ export default async function ProcessFlowPrintPage({
           <tr className="bg-gray-100 text-center">
             <th className="border border-black p-2 w-12">Step</th>
             <th className="border border-black p-2">Process / Operation Name</th>
+            {/* WIDENED COLUMN TO w-24 to fit the Reject box */}
             <th className="border border-black p-2 w-24">Symbol</th>
             <th className="border border-black p-2 w-10">SC</th>
             <th className="border border-black p-2 w-48">Remarks / Freq</th>
@@ -85,7 +86,7 @@ export default async function ProcessFlowPrintPage({
                   <RichText content={step.description} />
                 </td>
 
-                {/* 3. SYMBOL COLUMN (With Logic) */}
+                {/* 3. SYMBOL COLUMN */}
                 <td className="border border-black p-0 h-[80px] align-middle relative overflow-visible">
                    
                    {/* Top Line */}
@@ -106,26 +107,21 @@ export default async function ProcessFlowPrintPage({
 
                    {/* OK Label (Vertical Flow) */}
                    {isInspection && !isLast && (
-                      <div className="absolute left-[60%] bottom-[5%] text-[9px] font-bold bg-white px-0.5 z-20">OK</div>
+                      <div className="absolute left-[55%] bottom-[5%] text-[8px] font-bold bg-white px-0.5 z-20">OK</div>
                    )}
 
                    {/* --- NG / REJECT BRANCH LOGIC --- */}
                    {isInspection && (
                      <>
-                        {/* 1. Horizontal Line going Left */}
-                        <div className="absolute top-1/2 right-[50%] w-8 h-[1px] bg-black z-0"></div>
+                        {/* 1. Horizontal Line: Center Symbol to Left Box */}
+                        {/* Width is 50% minus padding for box */}
+                        <div className="absolute top-1/2 left-[38px] right-[50%] h-[1px] bg-black z-0"></div>
                         
-                        {/* 2. NG Label */}
-                        <div className="absolute top-[32%] right-[65%] text-[9px] font-bold bg-white px-0.5 z-20">NG</div>
+                        {/* 2. NG Label: Positioned slightly above the horizontal line */}
+                        <div className="absolute top-[35%] left-[45%] text-[8px] font-bold bg-white px-0.5 z-20">NG</div>
 
-                        {/* 3. Small Decision Diamond */}
-                        <div className="absolute top-1/2 right-[calc(50%+32px)] w-3 h-3 border border-black bg-white transform -translate-y-1/2 translate-x-1/2 rotate-45 z-10"></div>
-
-                        {/* 4. Line from Small Diamond to Reject Box */}
-                        <div className="absolute top-1/2 right-[calc(50%+32px)] w-4 h-[1px] bg-black z-0"></div>
-
-                        {/* 5. REJECT BOX */}
-                        <div className="absolute top-1/2 right-[calc(50%+48px)] transform -translate-y-1/2 bg-black text-white text-[9px] font-bold px-1 py-0.5 z-20">
+                        {/* 3. REJECT BOX: Anchored to the LEFT of the cell */}
+                        <div className="absolute top-1/2 left-1 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-1 py-0.5 z-20 border border-black">
                           REJECT
                         </div>
                      </>
