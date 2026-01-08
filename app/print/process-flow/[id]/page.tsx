@@ -65,7 +65,7 @@ export default async function ProcessFlowPrintPage({
           <tr className="bg-gray-100 text-center">
             <th className="border border-black p-2 w-12">Step</th>
             <th className="border border-black p-2">Process / Operation Name</th>
-            <th className="border border-black p-2 w-16">Symbol</th>
+            <th className="border border-black p-2 w-24">Symbol</th>
             <th className="border border-black p-2 w-10">SC</th>
             <th className="border border-black p-2 w-48">Remarks / Freq</th>
           </tr>
@@ -73,21 +73,22 @@ export default async function ProcessFlowPrintPage({
         <tbody>
           {steps?.map((step, index) => {
             const isLast = index === (steps.length - 1);
+            const isInspection = step.symbol_type === 'inspection';
             
             return (
               <tr key={step.id}>
-                {/* 1. Step Number (Vertically Centered) */}
+                {/* 1. Step Number */}
                 <td className="border border-black p-2 text-center font-bold align-middle">{step.step_number}</td>
                 
-                {/* 2. Description (Vertically Centered) */}
+                {/* 2. Description */}
                 <td className="border border-black p-2 uppercase align-middle">
                   <RichText content={step.description} />
                 </td>
 
-                {/* 3. SYMBOL COLUMN (Bulletproof Lines) */}
-                <td className="border border-black p-0 h-[60px] align-middle relative">
+                {/* 3. SYMBOL COLUMN (With Logic) */}
+                <td className="border border-black p-0 h-[80px] align-middle relative overflow-visible">
                    
-                   {/* Top Line: From Top Border to Center */}
+                   {/* Top Line */}
                    {index > 0 && (
                      <div 
                        className="absolute left-1/2 top-0 w-[1px] bg-black -translate-x-1/2 z-0" 
@@ -95,7 +96,7 @@ export default async function ProcessFlowPrintPage({
                      ></div>
                    )}
                    
-                   {/* Bottom Line: From Center to Bottom Border */}
+                   {/* Bottom Line */}
                    {!isLast && (
                      <div 
                        className="absolute left-1/2 top-1/2 w-[1px] bg-black -translate-x-1/2 z-0" 
@@ -103,8 +104,35 @@ export default async function ProcessFlowPrintPage({
                      ></div>
                    )}
 
-                   {/* The Symbol: Centered (z-10 puts it on top of the line) */}
-                   <div className="relative z-10 flex justify-center items-center h-full w-full">
+                   {/* OK Label (Vertical Flow) */}
+                   {isInspection && !isLast && (
+                      <div className="absolute left-[60%] bottom-[5%] text-[9px] font-bold bg-white px-0.5 z-20">OK</div>
+                   )}
+
+                   {/* --- NG / REJECT BRANCH LOGIC --- */}
+                   {isInspection && (
+                     <>
+                        {/* 1. Horizontal Line going Left */}
+                        <div className="absolute top-1/2 right-[50%] w-8 h-[1px] bg-black z-0"></div>
+                        
+                        {/* 2. NG Label */}
+                        <div className="absolute top-[32%] right-[65%] text-[9px] font-bold bg-white px-0.5 z-20">NG</div>
+
+                        {/* 3. Small Decision Diamond */}
+                        <div className="absolute top-1/2 right-[calc(50%+32px)] w-3 h-3 border border-black bg-white transform -translate-y-1/2 translate-x-1/2 rotate-45 z-10"></div>
+
+                        {/* 4. Line from Small Diamond to Reject Box */}
+                        <div className="absolute top-1/2 right-[calc(50%+32px)] w-4 h-[1px] bg-black z-0"></div>
+
+                        {/* 5. REJECT BOX */}
+                        <div className="absolute top-1/2 right-[calc(50%+48px)] transform -translate-y-1/2 bg-black text-white text-[9px] font-bold px-1 py-0.5 z-20">
+                          REJECT
+                        </div>
+                     </>
+                   )}
+
+                   {/* The Main Symbol */}
+                   <div className="relative z-10 flex justify-center items-center h-full w-full pointer-events-none">
                      <div className="bg-white p-1">
                         <FlowSymbol type={step.symbol_type || 'process'} />
                      </div>
