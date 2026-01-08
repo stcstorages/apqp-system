@@ -56,24 +56,24 @@ export default async function FmeaPage({
             <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '1800px' }}>
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px]">Failure Mode</th>
-                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px]">Effect</th>
-                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase w-8">S</th>
-                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase w-12">Cls</th>
-                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px]">Cause</th>
-                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px] bg-yellow-50">Prevention</th>
-                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase w-8">O</th>
-                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px]">Detection</th>
-                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase w-8">D</th>
-                  <th className="px-2 py-3 text-center text-xs font-black text-black uppercase bg-gray-200 min-w-[40px]">RPN</th>
-                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px]">Rec. Action</th>
-                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[100px]">Resp</th>
-                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px]">Action Taken</th>
-                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-500 uppercase w-8">S</th>
-                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-500 uppercase w-8">O</th>
-                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-500 uppercase w-8">D</th>
-                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-500 uppercase min-w-[40px]">RPN</th>
-                  <th className="px-2 py-3 w-16"></th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px] border-r">Failure Mode</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px] border-r">Effect</th>
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase w-8 border-r">S</th>
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase w-12 border-r">Cls</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px] border-r">Cause</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px] bg-yellow-50 border-r">Prevention</th>
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase w-8 border-r">O</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px] border-r">Detection</th>
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase w-8 border-r">D</th>
+                  <th className="px-2 py-3 text-center text-xs font-black text-black uppercase bg-gray-200 min-w-[40px] border-r">RPN</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px] border-r">Rec. Action</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[100px] border-r">Resp</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px] border-r">Action Taken</th>
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-500 uppercase w-8 border-r">S</th>
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-500 uppercase w-8 border-r">O</th>
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-500 uppercase w-8 border-r">D</th>
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-500 uppercase min-w-[40px] border-r">RPN</th>
+                  <th className="px-2 py-3 w-16 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -88,37 +88,92 @@ export default async function FmeaPage({
                   />
                 ))}
 
-                {/* ADD NEW ROW FORM */}
+                {/* 
+                   ADD NEW ROW FORM 
+                   We use 'form={id}' attribute to allow inputs to be in separate TDs 
+                */}
                 <tr className="bg-blue-50 border-t-2 border-blue-100">
-                  <td colSpan={18} className="p-2">
-                    <form action={addFmeaRow} className="flex gap-2 items-center overflow-x-auto pb-2">
+                  {/* Hidden Form Definition */}
+                  <td className="hidden">
+                    <form id={`add-form-${step.id}`} action={addFmeaRow}>
                       <input type="hidden" name="step_id" value={step.id} />
                       <input type="hidden" name="project_id" value={id} />
-                      
-                      {/* We make a simple inline form for the essential fields to start a row */}
-                      <div className="flex gap-1 w-full min-w-[1200px]">
-                        <input name="failure_mode" placeholder="Failure Mode..." required className="flex-1 min-w-[150px] text-xs border-blue-300 rounded p-1.5" />
-                        <input name="failure_effect" placeholder="Effect..." required className="flex-1 min-w-[150px] text-xs border-blue-300 rounded p-1.5" />
-                        <input name="severity" type="number" min="1" max="10" placeholder="S" className="w-10 text-center text-xs border-blue-300 rounded p-1.5" />
-                        
-                        <select name="special_char_id" className="w-14 text-xs border-blue-300 rounded p-1.5 bg-white">
-                          <option value="">-</option>
-                          {scLibrary?.map(sc => (
-                            <option key={sc.id} value={sc.id}>{sc.symbol_code === 'circle_double_plus' ? 'S' : 'F'}</option>
-                          ))}
-                        </select>
-
-                        <input name="cause" placeholder="Cause..." className="flex-1 min-w-[150px] text-xs border-blue-300 rounded p-1.5" />
-                        <input name="control_prevention" placeholder="Prev Control" className="flex-1 min-w-[150px] text-xs border-blue-300 rounded p-1.5 bg-yellow-50" />
-                        <input name="occurrence" type="number" min="1" max="10" placeholder="O" className="w-10 text-center text-xs border-blue-300 rounded p-1.5" />
-                        <input name="current_controls" placeholder="Det Control" className="flex-1 min-w-[150px] text-xs border-blue-300 rounded p-1.5" />
-                        <input name="detection" type="number" min="1" max="10" placeholder="D" className="w-10 text-center text-xs border-blue-300 rounded p-1.5" />
-                        
-                        <button className="bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded shadow hover:bg-blue-500 whitespace-nowrap">
-                          ADD ROW
-                        </button>
-                      </div>
                     </form>
+                  </td>
+
+                  {/* 1. Failure Mode */}
+                  <td className="p-0 border-r min-w-[150px]">
+                    <textarea form={`add-form-${step.id}`} name="failure_mode" placeholder="New Failure Mode..." required className="w-full h-full border-0 bg-transparent p-2 text-xs min-h-[50px] resize-none focus:ring-1 focus:ring-blue-500 placeholder-blue-300" />
+                  </td>
+                  
+                  {/* 2. Effect */}
+                  <td className="p-0 border-r min-w-[150px]">
+                    <textarea form={`add-form-${step.id}`} name="failure_effect" placeholder="Effect..." required className="w-full h-full border-0 bg-transparent p-2 text-xs min-h-[50px] resize-none focus:ring-1 focus:ring-blue-500 placeholder-blue-300" />
+                  </td>
+                  
+                  {/* 3. S */}
+                  <td className="p-0 border-r w-8">
+                    <input form={`add-form-${step.id}`} name="severity" type="number" min="1" max="10" placeholder="S" className="w-full h-full border-0 bg-transparent text-center text-xs font-bold focus:ring-1 focus:ring-blue-500 placeholder-blue-300" />
+                  </td>
+                  
+                  {/* 4. Class */}
+                  <td className="p-0 border-r w-12">
+                    <select form={`add-form-${step.id}`} name="special_char_id" className="w-full h-full border-0 bg-transparent text-center text-[10px] focus:ring-1 focus:ring-blue-500 text-blue-800">
+                      <option value="">-</option>
+                      {scLibrary?.map(sc => (
+                        <option key={sc.id} value={sc.id}>{sc.symbol_code === 'circle_double_plus' ? 'S' : 'F'}</option>
+                      ))}
+                    </select>
+                  </td>
+
+                  {/* 5. Cause */}
+                  <td className="p-0 border-r min-w-[150px]">
+                    <textarea form={`add-form-${step.id}`} name="cause" placeholder="Cause..." className="w-full h-full border-0 bg-transparent p-2 text-xs min-h-[50px] resize-none focus:ring-1 focus:ring-blue-500 placeholder-blue-300" />
+                  </td>
+
+                  {/* 6. Prevention */}
+                  <td className="p-0 border-r min-w-[150px] bg-yellow-50/50">
+                    <textarea form={`add-form-${step.id}`} name="control_prevention" placeholder="Prevention..." className="w-full h-full border-0 bg-transparent p-2 text-xs min-h-[50px] resize-none focus:ring-1 focus:ring-blue-500 placeholder-blue-300" />
+                  </td>
+
+                  {/* 7. O */}
+                  <td className="p-0 border-r w-8">
+                    <input form={`add-form-${step.id}`} name="occurrence" type="number" min="1" max="10" placeholder="O" className="w-full h-full border-0 bg-transparent text-center text-xs font-bold focus:ring-1 focus:ring-blue-500 placeholder-blue-300" />
+                  </td>
+
+                  {/* 8. Detection */}
+                  <td className="p-0 border-r min-w-[150px]">
+                    <textarea form={`add-form-${step.id}`} name="current_controls" placeholder="Detection..." className="w-full h-full border-0 bg-transparent p-2 text-xs min-h-[50px] resize-none focus:ring-1 focus:ring-blue-500 placeholder-blue-300" />
+                  </td>
+
+                  {/* 9. D */}
+                  <td className="p-0 border-r w-8">
+                    <input form={`add-form-${step.id}`} name="detection" type="number" min="1" max="10" placeholder="D" className="w-full h-full border-0 bg-transparent text-center text-xs font-bold focus:ring-1 focus:ring-blue-500 placeholder-blue-300" />
+                  </td>
+
+                  {/* 10. RPN (Empty for new) */}
+                  <td className="p-1 border-r bg-gray-50 min-w-[40px]"></td>
+
+                  {/* 11-13. Actions (Optional for new row) */}
+                  <td className="p-0 border-r min-w-[150px]"><textarea form={`add-form-${step.id}`} name="recommended_actions" placeholder="Rec. Action" className="w-full h-full border-0 bg-transparent p-2 text-xs resize-none placeholder-gray-300" /></td>
+                  <td className="p-0 border-r min-w-[100px]"><textarea form={`add-form-${step.id}`} name="responsibility" placeholder="Resp." className="w-full h-full border-0 bg-transparent p-2 text-xs resize-none placeholder-gray-300" /></td>
+                  <td className="p-0 border-r min-w-[150px]"><textarea form={`add-form-${step.id}`} name="action_taken" placeholder="Action Taken" className="w-full h-full border-0 bg-transparent p-2 text-xs resize-none placeholder-gray-300" /></td>
+
+                  {/* 14-17. Results */}
+                  <td className="p-0 border-r w-8 bg-gray-50"></td>
+                  <td className="p-0 border-r w-8 bg-gray-50"></td>
+                  <td className="p-0 border-r w-8 bg-gray-50"></td>
+                  <td className="p-0 border-r min-w-[40px] bg-gray-50"></td>
+
+                  {/* Button */}
+                  <td className="p-1 text-center align-middle">
+                    <button 
+                      type="submit" 
+                      form={`add-form-${step.id}`}
+                      className="bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow hover:bg-blue-500 w-full"
+                    >
+                      ADD
+                    </button>
                   </td>
                 </tr>
 
