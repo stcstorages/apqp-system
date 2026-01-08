@@ -14,7 +14,7 @@ export default function FmeaRow({ risk, scLibrary, projectId }: Props) {
   const router = useRouter()
   const [isChanged, setIsChanged] = useState(false)
 
-  // Local State for all inputss
+  // Local State
   const [mode, setMode] = useState(risk.failure_mode)
   const [effect, setEffect] = useState(risk.failure_effect)
   const [sev, setSev] = useState(risk.severity)
@@ -24,7 +24,6 @@ export default function FmeaRow({ risk, scLibrary, projectId }: Props) {
   const [control, setControl] = useState(risk.current_controls)
   const [det, setDet] = useState(risk.detection)
 
-  // Auto-calculate RPN for display (Server calculates simpler, but good to show user immediately)
   const rpn = (parseInt(sev) || 0) * (parseInt(occ) || 0) * (parseInt(det) || 0)
 
   const handleInput = (setter: any, value: string) => {
@@ -47,7 +46,6 @@ export default function FmeaRow({ risk, scLibrary, projectId }: Props) {
           <input type="hidden" name="project_id" value={projectId} />
         </form>
         
-        {/* Failure Mode */}
         <textarea 
           form={`form-${risk.id}`} name="failure_mode" 
           value={mode} onChange={(e) => handleInput(setMode, e.target.value)}
@@ -72,7 +70,6 @@ export default function FmeaRow({ risk, scLibrary, projectId }: Props) {
       </td>
 
       <td className="p-0 border-l w-16">
-        {/* Class / SC Selection */}
         <select 
           form={`form-${risk.id}`} name="special_char_id"
           value={classId} onChange={(e) => handleInput(setClassId, e.target.value)}
@@ -80,7 +77,7 @@ export default function FmeaRow({ risk, scLibrary, projectId }: Props) {
         >
           <option value="">-</option>
           {scLibrary.map(sc => (
-            <option key={sc.id} value={sc.id}>{sc.symbol_code === 'circle_double_plus' ? 'S (⊕⊕)' : 'F (⊕)'}</option>
+            <option key={sc.id} value={sc.id}>{sc.symbol_code === 'circle_double_plus' ? 'S' : 'F'}</option>
           ))}
         </select>
       </td>
