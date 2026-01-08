@@ -1,6 +1,16 @@
 import { createClient } from '@/utils/supabase/server'
 import SpecialSymbol from '@/app/components/SpecialSymbol'
 
+// Helper for DD-MMM-YYYY format
+const formatDate = (dateStr: string | null | undefined) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return '-'
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit', month: 'short', year: 'numeric'
+  }).replace(/ /g, '-')
+}
+
 export default async function ControlPlanPrintPage({
   params,
 }: {
@@ -28,7 +38,7 @@ export default async function ControlPlanPrintPage({
         }
       `}</style>
 
-      {/* HEADER - Connected to Database */}
+      {/* HEADER */}
       <div className="mb-2 text-xs">
         <div className="font-bold text-lg text-center mb-2">CONTROL PLAN</div>
         
@@ -43,22 +53,18 @@ export default async function ControlPlanPrintPage({
         <div className="border border-black flex">
            {/* Left Block */}
            <div className="w-1/3 border-r border-black">
-              {/* Row 1 */}
               <div className="border-b border-black p-1 h-8">
                  <div className="text-[8px] text-gray-500">Control Plan Number</div>
                  <div>{project.cp_number || '-'}</div>
               </div>
-              {/* Row 2 - TALLER (h-14) - FIXED ALIGNMENT (Top) */}
               <div className="border-b border-black p-1 h-14">
                  <div className="text-[8px] text-gray-500">Part Number/Latest Change Level</div>
                  <div>{project.part_number}</div>
               </div>
-              {/* Row 3 */}
               <div className="border-b border-black p-1 h-8">
                  <div className="text-[8px] text-gray-500">Part Name/Description</div>
                  <div>{project.name}</div>
               </div>
-              {/* Row 4 */}
               <div className="flex h-8">
                  <div className="w-1/2 border-r border-black p-1">
                     <div className="text-[8px] text-gray-500">Supplier/Plant</div>
@@ -73,57 +79,49 @@ export default async function ControlPlanPrintPage({
 
            {/* Middle Block */}
            <div className="w-1/3 border-r border-black">
-              {/* Row 1 */}
               <div className="border-b border-black p-1 h-8">
                  <div className="text-[8px] text-gray-500">Key Contact/Phone</div>
                  <div>{project.key_contact || '-'}</div>
               </div>
-              {/* Row 2 - TALLER (h-14) for CORE TEAM - Already Top Aligned */}
               <div className="border-b border-black p-1 h-14 overflow-hidden">
                  <div className="text-[8px] text-gray-500">Core Team</div>
                  <div className="text-[9px] leading-tight break-words whitespace-normal">
                     {project.core_team || '-'}
                  </div>
               </div>
-              {/* Row 3 */}
               <div className="border-b border-black p-1 h-8">
                  <div className="text-[8px] text-gray-500">Supplier/Plant Approval/Date</div>
                  <div>-</div>
               </div>
-              {/* Row 4 */}
               <div className="p-1 h-8">
                  <div className="text-[8px] text-gray-500">Other Approval/Date</div>
-                 <div>{project.other_approval || '-'}</div>
+                 <div>{formatDate(project.other_approval)}</div>
               </div>
            </div>
 
            {/* Right Block */}
            <div className="w-1/3">
-              {/* Row 1 */}
               <div className="border-b border-black flex h-8">
                  <div className="w-1/2 border-r border-black p-1">
                     <div className="text-[8px] text-gray-500">Date (Orig.)</div>
-                    <div>{project.cp_date_orig || '-'}</div>
+                    <div>{formatDate(project.cp_date_orig)}</div>
                  </div>
                  <div className="w-1/2 p-1">
                     <div className="text-[8px] text-gray-500">Date (Rev.)</div>
-                    <div>{project.cp_date_rev || '-'}</div>
+                    <div>{formatDate(project.cp_date_rev)}</div>
                  </div>
               </div>
-              {/* Row 2 - TALLER (h-14) - FIXED ALIGNMENT (Top) */}
               <div className="border-b border-black p-1 h-14">
                  <div className="text-[8px] text-gray-500">Customer Engineering Approval/Date</div>
-                 <div>{project.customer_eng_approval || '-'}</div>
+                 <div>{formatDate(project.customer_eng_approval)}</div>
               </div>
-              {/* Row 3 */}
               <div className="border-b border-black p-1 h-8">
                  <div className="text-[8px] text-gray-500">Customer Quality Approval/Date</div>
-                 <div>{project.customer_quality_approval || '-'}</div>
+                 <div>{formatDate(project.customer_quality_approval)}</div>
               </div>
-              {/* Row 4 */}
               <div className="p-1 h-8">
                  <div className="text-[8px] text-gray-500">Other Approval/Date</div>
-                 <div>{project.other_approval || '-'}</div>
+                 <div>{formatDate(project.other_approval)}</div>
               </div>
            </div>
         </div>
@@ -166,23 +164,15 @@ export default async function ControlPlanPrintPage({
                <tr key={cp.id || `${step.id}-${index}`}>
                  {index === 0 && (
                    <>
-                     <td className="border border-black p-1 text-center align-top font-bold bg-gray-50" rowSpan={cpRows.length}>
-                       {step.step_number}
-                     </td>
-                     <td className="border border-black p-1 align-top uppercase" rowSpan={cpRows.length}>
-                       {step.description}
-                     </td>
-                     <td className="border border-black p-1 align-top" rowSpan={cpRows.length}>
-                       {step.machine_tools}
-                     </td>
+                     <td className="border border-black p-1 text-center align-top font-bold bg-gray-50" rowSpan={cpRows.length}>{step.step_number}</td>
+                     <td className="border border-black p-1 align-top uppercase" rowSpan={cpRows.length}>{step.description}</td>
+                     <td className="border border-black p-1 align-top" rowSpan={cpRows.length}>{step.machine_tools}</td>
                    </>
                  )}
                  <td className="border border-black p-1 text-center">{index + 1}</td>
                  <td className="border border-black p-1">{cp.characteristic_product || ''}</td>
                  <td className="border border-black p-1">{cp.characteristic_process || ''}</td>
-                 <td className="border border-black p-1 text-center">
-                    {cp.symbolCode && <SpecialSymbol code={cp.symbolCode} />}
-                 </td>
+                 <td className="border border-black p-1 text-center">{cp.symbolCode && <SpecialSymbol code={cp.symbolCode} />}</td>
                  <td className="border border-black p-1">{cp.specification_tolerance || ''}</td>
                  <td className="border border-black p-1">{cp.eval_measurement_technique || ''}</td>
                  <td className="border border-black p-1 text-center">{cp.sample_size || ''}</td>
@@ -195,7 +185,6 @@ export default async function ControlPlanPrintPage({
           })}
         </tbody>
       </table>
-
       <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
     </div>
   )
