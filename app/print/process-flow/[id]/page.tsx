@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import FlowSymbol from '@/app/components/FlowSymbol'
 import SpecialSymbol from '@/app/components/SpecialSymbol'
+import RichText from '@/app/components/RichText' // Import the parser
 
 export default async function ProcessFlowPrintPage({
   params,
@@ -66,7 +67,7 @@ export default async function ProcessFlowPrintPage({
             <th className="border border-black p-2">Process / Operation Name</th>
             <th className="border border-black p-2 w-16">Symbol</th>
             <th className="border border-black p-2 w-24">Characteristics</th>
-            <th className="border border-black p-2 w-32">Remarks / Freq</th>
+            <th className="border border-black p-2 w-48">Remarks / Freq</th>
           </tr>
         </thead>
         <tbody>
@@ -75,28 +76,28 @@ export default async function ProcessFlowPrintPage({
             
             return (
               <tr key={step.id}>
-                <td className="border border-black p-2 text-center font-bold">{step.step_number}</td>
+                <td className="border border-black p-2 text-center font-bold align-top">{step.step_number}</td>
                 
-                {/* Description Column - CLEANED (No Horizontal Line) */}
-                <td className="border border-black p-2 uppercase align-middle">
-                  {step.description}
+                {/* Description Column - Using RichText for lists */}
+                <td className="border border-black p-2 uppercase align-top">
+                  <RichText content={step.description} />
                 </td>
 
-                {/* SYMBOL COLUMN - Vertical Lines Only */}
-                <td className="border border-black p-0 h-[50px]">
-                   <div className="relative h-full w-full flex items-center justify-center">
+                {/* SYMBOL COLUMN */}
+                <td className="border border-black p-0 h-[50px] align-top">
+                   <div className="relative h-full w-full flex justify-center pt-2">
                      
                      {/* Top Vertical Line */}
                      {index > 0 && (
-                       <div className="absolute top-0 left-1/2 h-1/2 border-l border-black -translate-x-1/2" style={{ borderColor: '#000', borderWidth: '0 0 0 1px' }}></div>
+                       <div className="absolute top-0 left-1/2 h-4 border-l border-black -translate-x-1/2" style={{ borderColor: '#000', borderWidth: '0 0 0 1px' }}></div>
                      )}
                      
                      {/* Bottom Vertical Line */}
                      {!isLast && (
-                       <div className="absolute bottom-0 left-1/2 h-1/2 border-l border-black -translate-x-1/2" style={{ borderColor: '#000', borderWidth: '0 0 0 1px' }}></div>
+                       <div className="absolute top-4 bottom-0 left-1/2 border-l border-black -translate-x-1/2" style={{ borderColor: '#000', borderWidth: '0 0 0 1px' }}></div>
                      )}
 
-                     {/* The Symbol (White BG to hide the crossing vertical line) */}
+                     {/* The Symbol */}
                      <div className="relative z-10 bg-white p-1">
                        <FlowSymbol type={step.symbol_type || 'process'} />
                      </div>
@@ -104,7 +105,7 @@ export default async function ProcessFlowPrintPage({
                 </td>
 
                 {/* Special Characteristics */}
-                <td className="border border-black p-1 text-center">
+                <td className="border border-black p-1 text-center align-top pt-3">
                   {step.special_characteristics && (
                     <div className="flex justify-center items-center gap-2">
                        <SpecialSymbol code={step.special_characteristics.symbol_code} />
@@ -112,8 +113,10 @@ export default async function ProcessFlowPrintPage({
                   )}
                 </td>
                 
-                {/* Remarks */}
-                <td className="border border-black p-2 text-center">{step.remarks}</td>
+                {/* Remarks - Using RichText here too */}
+                <td className="border border-black p-2 align-top">
+                  <RichText content={step.remarks} />
+                </td>
               </tr>
             )
           })}
@@ -135,7 +138,7 @@ export default async function ProcessFlowPrintPage({
              </div>
           </div>
           
-          {/* Special Characteristics Legend */}
+          {/* Legend */}
           <div>
              <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">KEY CHARACTERISTICS</div>
              <div className="p-2 space-y-1">
@@ -145,7 +148,6 @@ export default async function ProcessFlowPrintPage({
                     <SpecialSymbol code={sc.symbol_code} />
                  </div>
                ))}
-               {(!scLibrary || scLibrary.length === 0) && <div className="text-gray-400 italic">No SC defined</div>}
              </div>
           </div>
 
@@ -162,13 +164,11 @@ export default async function ProcessFlowPrintPage({
           </div>
         </div>
         
-        {/* Bottom Strip */}
         <div className="flex justify-between p-1 px-2 bg-gray-100 text-[9px]">
            <div>ISSUE NO: 1</div>
            <div>REVISION NO: 0</div>
            <div>DATE: {new Date().toLocaleDateString()}</div>
         </div>
-
       </div>
 
       <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
