@@ -52,14 +52,14 @@ export default function ProcessStepRow({ step, scLibrary, projectId }: Props) {
           name="symbol_type" 
           value={symbolType}
           onChange={(e) => handleInput(setSymbolType, e.target.value)}
-          className="w-20 text-xs border-gray-300 rounded p-1 bg-white focus:border-blue-500"
+          className="w-24 text-xs border-gray-300 rounded p-1 bg-white focus:border-blue-500"
         >
-           <option value="start">Start</option>
-           <option value="process">Proc</option>
-           <option value="inspection">Insp</option>
-           <option value="storage">Stor</option>
-           <option value="transport">Trans</option>
-           <option value="delay">Delay</option>
+           <option value="start">START</option>
+           <option value="process">PROCESS</option>
+           <option value="inspection">INSP</option>
+           <option value="inprocess">IN-PROC</option>
+           <option value="storage">STORE</option>
+           <option value="delivery">DELIV</option>
         </select>
 
         {/* Details Column */}
