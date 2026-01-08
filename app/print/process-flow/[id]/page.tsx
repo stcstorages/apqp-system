@@ -63,9 +63,11 @@ export default async function ProcessFlowPrintPage({
       <table className="w-full border-collapse border border-black text-xs mb-4 table-fixed">
         <thead>
           <tr className="bg-gray-100 text-center">
-            <th className="border border-black p-2 w-10">Step</th>
+            {/* 1. WIDENED Step Column (w-14) to fix overlap */}
+            <th className="border border-black p-2 w-14">Step</th>
             <th className="border border-black p-2 w-48">Process / Operation Name</th>
-            <th className="border border-black p-2 w-36">Symbol</th>
+            {/* 2. WIDENED Symbol Column (w-40) for REJECT spacing */}
+            <th className="border border-black p-2 w-40">Symbol</th>
             <th className="border border-black p-2 w-10">SC</th>
             <th className="border border-black p-2">Remarks / Freq</th>
           </tr>
@@ -73,15 +75,14 @@ export default async function ProcessFlowPrintPage({
         <tbody>
           {steps?.map((step, index) => {
             const isLast = index === (steps.length - 1);
-            // Check for both Inspection AND In-Process Inspection for branching logic?
-            // Usually only pure 'inspection' is a decision gate (Reject).
-            // 'In-process' usually flows through. Let's assume only 'inspection' is a gate for now.
             const isInspection = step.symbol_type === 'inspection';
             
             return (
               <tr key={step.id}>
+                {/* Step Number */}
                 <td className="border border-black p-2 text-center font-bold align-middle">{step.step_number}</td>
                 
+                {/* Description */}
                 <td className="border border-black p-2 uppercase align-middle break-words whitespace-normal">
                   <RichText content={step.description} />
                 </td>
@@ -89,7 +90,7 @@ export default async function ProcessFlowPrintPage({
                 {/* SYMBOL COLUMN */}
                 <td className="border border-black p-0 h-[80px] align-middle relative overflow-visible">
                    
-                   {/* Top Line */}
+                   {/* Vertical Line: 75% Position */}
                    {index > 0 && (
                      <div 
                        className="absolute left-3/4 top-0 w-[1px] bg-black -translate-x-1/2 z-0" 
@@ -97,7 +98,6 @@ export default async function ProcessFlowPrintPage({
                      ></div>
                    )}
                    
-                   {/* Bottom Line */}
                    {!isLast && (
                      <div 
                        className="absolute left-3/4 top-1/2 w-[1px] bg-black -translate-x-1/2 z-0" 
@@ -110,18 +110,23 @@ export default async function ProcessFlowPrintPage({
                       <div className="absolute left-[78%] bottom-[5%] text-[8px] font-bold bg-white px-0.5 z-20">OK</div>
                    )}
 
-                   {/* REJECT LOGIC */}
+                   {/* --- NG / REJECT BRANCH LOGIC --- */}
                    {isInspection && (
                      <>
-                        <div className="absolute top-1/2 left-[45px] right-[25%] h-[1px] bg-black z-0"></div>
-                        <div className="absolute top-[35%] left-[55px] text-[8px] font-bold bg-white px-0.5 z-20">NG</div>
-                        <div className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-2 py-1 z-20 border border-black shadow-sm">
+                        {/* 1. Horizontal Line: From near Reject Box to Main Line (75%) */}
+                        <div className="absolute top-1/2 left-[40px] right-[25%] h-[1px] bg-black z-0"></div>
+                        
+                        {/* 2. NG Label: Moved further right (65px) to clear the box */}
+                        <div className="absolute top-[35%] left-[65px] text-[8px] font-bold bg-white px-0.5 z-20">NG</div>
+
+                        {/* 3. REJECT BOX */}
+                        <div className="absolute top-1/2 left-1 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-2 py-1 z-20 border border-black shadow-sm">
                           REJECT
                         </div>
                      </>
                    )}
 
-                   {/* The Symbol */}
+                   {/* The Main Symbol: Centered on the 75% line */}
                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 pl-[50%]">
                      <div className="bg-white p-1">
                         <FlowSymbol type={step.symbol_type || 'process'} />
@@ -148,58 +153,46 @@ export default async function ProcessFlowPrintPage({
 
       {/* FOOTER LEGEND */}
       <div className="border border-black text-[10px] break-inside-avoid">
-        {/* HEADER ROW FOR LEGEND */}
-        <div className="grid grid-cols-3 divide-x divide-black border-b border-black font-bold bg-gray-100 text-center">
-           <div className="p-1">ITEM</div>
-           <div className="p-1">SYMBOL</div>
-           <div className="p-1">KEY CHARACTERISTICS</div>
-        </div>
-
-        <div className="grid grid-cols-3 divide-x divide-black">
-          {/* Col 1: Item Names */}
-          <div className="flex flex-col text-center divide-y divide-black">
-             <div className="p-1">START</div>
-             <div className="p-1">PROCESS</div>
-             <div className="p-1">INSPECTION</div>
-             <div className="p-1">INPROSCESS INSP</div>
-             <div className="p-1">STORAGE</div>
-             <div className="p-1">DELIVERY/END</div>
+        <div className="grid grid-cols-3 divide-x divide-black border-b border-black">
+          {/* Symbols */}
+          <div>
+             <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">PROCESS SYMBOLS</div>
+             <div className="grid grid-cols-2 gap-1 p-2">
+                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="start"/></div> Start/End</div>
+                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="process"/></div> Process</div>
+                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="inspection"/></div> Insp.</div>
+                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="storage"/></div> Storage</div>
+                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="transport"/></div> Delivery</div>
+             </div>
           </div>
-
-          {/* Col 2: Symbols */}
-          <div className="flex flex-col items-center justify-center divide-y divide-black w-full">
-             <div className="p-1 w-full flex justify-center"><FlowSymbol type="start"/></div>
-             <div className="p-1 w-full flex justify-center"><FlowSymbol type="process"/></div>
-             <div className="p-1 w-full flex justify-center"><FlowSymbol type="inspection"/></div>
-             <div className="p-1 w-full flex justify-center"><FlowSymbol type="inprocess"/></div>
-             <div className="p-1 w-full flex justify-center"><FlowSymbol type="storage"/></div>
-             <div className="p-1 w-full flex justify-center"><FlowSymbol type="delivery"/></div>
-          </div>
-
-          {/* Col 3: Key Characteristics & Signatures */}
-          <div className="flex flex-col">
-             <div className="p-2 space-y-2 flex-1 border-b border-black">
+          
+          {/* Legend */}
+          <div>
+             <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">KEY CHARACTERISTICS</div>
+             <div className="p-2 space-y-1">
                {scLibrary?.map(sc => (
-                 <div key={sc.id} className="flex justify-between items-center px-4">
+                 <div key={sc.id} className="flex justify-between items-center border-b border-gray-100 last:border-0">
                     <span>{sc.name}</span>
                     <SpecialSymbol code={sc.symbol_code} />
                  </div>
                ))}
              </div>
-             
-             {/* Signatures */}
+          </div>
+
+          {/* Signatures */}
+          <div className="flex flex-col">
              <div className="grid grid-cols-3 divide-x divide-black bg-gray-100 font-bold text-center border-b border-black">
-                <div className="p-1">PREPARED</div>
-                <div className="p-1">CHECKED</div>
-                <div className="p-1">APPROVED</div>
+                <div className="p-1">PREP</div>
+                <div className="p-1">CHECK</div>
+                <div className="p-1">APPR</div>
              </div>
-             <div className="grid grid-cols-3 divide-x divide-black min-h-[50px]">
+             <div className="grid grid-cols-3 divide-x divide-black flex-1 min-h-[60px]">
                 <div></div><div></div><div></div>
              </div>
           </div>
         </div>
         
-        <div className="flex justify-between p-1 px-2 bg-gray-100 text-[9px] border-t border-black">
+        <div className="flex justify-between p-1 px-2 bg-gray-100 text-[9px]">
            <div>ISSUE NO: 1</div>
            <div>REVISION NO: 0</div>
            <div>DATE: {new Date().toLocaleDateString()}</div>
