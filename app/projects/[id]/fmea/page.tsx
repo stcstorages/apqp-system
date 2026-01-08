@@ -37,7 +37,7 @@ export default async function FmeaPage({
 
       {/* Loop through each Process Step */}
       {steps?.map((step) => (
-        <div key={step.id} className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+        <div key={step.id} className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden mb-8">
           
           {/* Header: Process Step Info */}
           <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
@@ -53,24 +53,32 @@ export default async function FmeaPage({
 
           {/* FMEA TABLE */}
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '1800px' }}>
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Failure Mode</th>
-                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Effect</th>
-                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase w-10">S</th>
-                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase w-16">Class</th>
-                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cause</th>
-                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase w-10">O</th>
-                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Control</th>
-                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase w-10">D</th>
-                  <th className="px-2 py-3 text-center text-xs font-black text-black uppercase bg-gray-200">RPN</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px]">Failure Mode</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px]">Effect</th>
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase w-8">S</th>
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase w-12">Cls</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px]">Cause</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px] bg-yellow-50">Prevention</th>
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase w-8">O</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px]">Detection</th>
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase w-8">D</th>
+                  <th className="px-2 py-3 text-center text-xs font-black text-black uppercase bg-gray-200 min-w-[40px]">RPN</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px]">Rec. Action</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[100px]">Resp</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px]">Action Taken</th>
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-500 uppercase w-8">S</th>
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-500 uppercase w-8">O</th>
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-500 uppercase w-8">D</th>
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-500 uppercase min-w-[40px]">RPN</th>
                   <th className="px-2 py-3 w-16"></th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 
-                {/* EXISTING ROWS (Client Component) */}
+                {/* EXISTING ROWS */}
                 {step.pfmea_records.map((risk: any) => (
                   <FmeaRow 
                     key={risk.id} 
@@ -80,32 +88,36 @@ export default async function FmeaPage({
                   />
                 ))}
 
-                {/* ADD NEW ROW (Server Action Form) */}
+                {/* ADD NEW ROW FORM */}
                 <tr className="bg-blue-50 border-t-2 border-blue-100">
-                  <td colSpan={10} className="p-2">
-                    <form action={addFmeaRow} className="flex gap-1 items-center">
+                  <td colSpan={18} className="p-2">
+                    <form action={addFmeaRow} className="flex gap-2 items-center overflow-x-auto pb-2">
                       <input type="hidden" name="step_id" value={step.id} />
                       <input type="hidden" name="project_id" value={id} />
                       
-                      <input name="failure_mode" placeholder="New Failure Mode..." required className="flex-1 text-xs border-blue-300 rounded p-1.5" />
-                      <input name="failure_effect" placeholder="Effect..." required className="flex-1 text-xs border-blue-300 rounded p-1.5" />
-                      <input name="severity" type="number" min="1" max="10" placeholder="S" className="w-10 text-center text-xs border-blue-300 rounded p-1.5" />
-                      
-                      <select name="special_char_id" className="w-16 text-xs border-blue-300 rounded p-1.5 bg-white">
-                        <option value="">-</option>
-                        {scLibrary?.map(sc => (
-                          <option key={sc.id} value={sc.id}>{sc.symbol_code === 'circle_double_plus' ? 'S' : 'F'}</option>
-                        ))}
-                      </select>
+                      {/* We make a simple inline form for the essential fields to start a row */}
+                      <div className="flex gap-1 w-full min-w-[1200px]">
+                        <input name="failure_mode" placeholder="Failure Mode..." required className="flex-1 min-w-[150px] text-xs border-blue-300 rounded p-1.5" />
+                        <input name="failure_effect" placeholder="Effect..." required className="flex-1 min-w-[150px] text-xs border-blue-300 rounded p-1.5" />
+                        <input name="severity" type="number" min="1" max="10" placeholder="S" className="w-10 text-center text-xs border-blue-300 rounded p-1.5" />
+                        
+                        <select name="special_char_id" className="w-14 text-xs border-blue-300 rounded p-1.5 bg-white">
+                          <option value="">-</option>
+                          {scLibrary?.map(sc => (
+                            <option key={sc.id} value={sc.id}>{sc.symbol_code === 'circle_double_plus' ? 'S' : 'F'}</option>
+                          ))}
+                        </select>
 
-                      <input name="cause" placeholder="Cause..." className="flex-1 text-xs border-blue-300 rounded p-1.5" />
-                      <input name="occurrence" type="number" min="1" max="10" placeholder="O" className="w-10 text-center text-xs border-blue-300 rounded p-1.5" />
-                      <input name="current_controls" placeholder="Control..." className="flex-1 text-xs border-blue-300 rounded p-1.5" />
-                      <input name="detection" type="number" min="1" max="10" placeholder="D" className="w-10 text-center text-xs border-blue-300 rounded p-1.5" />
-                      
-                      <button className="bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded shadow hover:bg-blue-500">
-                        ADD
-                      </button>
+                        <input name="cause" placeholder="Cause..." className="flex-1 min-w-[150px] text-xs border-blue-300 rounded p-1.5" />
+                        <input name="control_prevention" placeholder="Prev Control" className="flex-1 min-w-[150px] text-xs border-blue-300 rounded p-1.5 bg-yellow-50" />
+                        <input name="occurrence" type="number" min="1" max="10" placeholder="O" className="w-10 text-center text-xs border-blue-300 rounded p-1.5" />
+                        <input name="current_controls" placeholder="Det Control" className="flex-1 min-w-[150px] text-xs border-blue-300 rounded p-1.5" />
+                        <input name="detection" type="number" min="1" max="10" placeholder="D" className="w-10 text-center text-xs border-blue-300 rounded p-1.5" />
+                        
+                        <button className="bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded shadow hover:bg-blue-500 whitespace-nowrap">
+                          ADD ROW
+                        </button>
+                      </div>
                     </form>
                   </td>
                 </tr>
