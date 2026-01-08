@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import FlowSymbol from '@/app/components/FlowSymbol'
 import SpecialSymbol from '@/app/components/SpecialSymbol'
-import RichText from '@/app/components/RichText' // Import the parser
+import RichText from '@/app/components/RichText'
 
 export default async function ProcessFlowPrintPage({
   params,
@@ -66,7 +66,8 @@ export default async function ProcessFlowPrintPage({
             <th className="border border-black p-2 w-12">Step</th>
             <th className="border border-black p-2">Process / Operation Name</th>
             <th className="border border-black p-2 w-16">Symbol</th>
-            <th className="border border-black p-2 w-24">Characteristics</th>
+            {/* UPDATED: Renamed to SC and shrink width to w-10 */}
+            <th className="border border-black p-2 w-10">SC</th>
             <th className="border border-black p-2 w-48">Remarks / Freq</th>
           </tr>
         </thead>
@@ -104,10 +105,10 @@ export default async function ProcessFlowPrintPage({
                    </div>
                 </td>
 
-                {/* Special Characteristics */}
+                {/* SC Column - Centered Symbol */}
                 <td className="border border-black p-1 text-center align-top pt-3">
                   {step.special_characteristics && (
-                    <div className="flex justify-center items-center gap-2">
+                    <div className="flex justify-center items-center">
                        <SpecialSymbol code={step.special_characteristics.symbol_code} />
                     </div>
                   )}
