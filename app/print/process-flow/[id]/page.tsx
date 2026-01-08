@@ -66,7 +66,6 @@ export default async function ProcessFlowPrintPage({
             <th className="border border-black p-2 w-12">Step</th>
             <th className="border border-black p-2">Process / Operation Name</th>
             <th className="border border-black p-2 w-16">Symbol</th>
-            {/* UPDATED: Renamed to SC and shrink width to w-10 */}
             <th className="border border-black p-2 w-10">SC</th>
             <th className="border border-black p-2 w-48">Remarks / Freq</th>
           </tr>
@@ -77,36 +76,43 @@ export default async function ProcessFlowPrintPage({
             
             return (
               <tr key={step.id}>
-                <td className="border border-black p-2 text-center font-bold align-top">{step.step_number}</td>
+                {/* 1. Step Number (Vertically Centered) */}
+                <td className="border border-black p-2 text-center font-bold align-middle">{step.step_number}</td>
                 
-                {/* Description Column - Using RichText for lists */}
-                <td className="border border-black p-2 uppercase align-top">
+                {/* 2. Description (Vertically Centered) */}
+                <td className="border border-black p-2 uppercase align-middle">
                   <RichText content={step.description} />
                 </td>
 
-                {/* SYMBOL COLUMN */}
-                <td className="border border-black p-0 h-[50px] align-top">
-                   <div className="relative h-full w-full flex justify-center pt-2">
-                     
-                     {/* Top Vertical Line */}
-                     {index > 0 && (
-                       <div className="absolute top-0 left-1/2 h-4 border-l border-black -translate-x-1/2" style={{ borderColor: '#000', borderWidth: '0 0 0 1px' }}></div>
-                     )}
-                     
-                     {/* Bottom Vertical Line */}
-                     {!isLast && (
-                       <div className="absolute top-4 bottom-0 left-1/2 border-l border-black -translate-x-1/2" style={{ borderColor: '#000', borderWidth: '0 0 0 1px' }}></div>
-                     )}
+                {/* 3. SYMBOL COLUMN (Bulletproof Lines) */}
+                <td className="border border-black p-0 h-[60px] align-middle relative">
+                   
+                   {/* Top Line: From Top Border to Center */}
+                   {index > 0 && (
+                     <div 
+                       className="absolute left-1/2 top-0 w-[1px] bg-black -translate-x-1/2 z-0" 
+                       style={{ height: '50%' }}
+                     ></div>
+                   )}
+                   
+                   {/* Bottom Line: From Center to Bottom Border */}
+                   {!isLast && (
+                     <div 
+                       className="absolute left-1/2 top-1/2 w-[1px] bg-black -translate-x-1/2 z-0" 
+                       style={{ height: '50%' }}
+                     ></div>
+                   )}
 
-                     {/* The Symbol */}
-                     <div className="relative z-10 bg-white p-1">
-                       <FlowSymbol type={step.symbol_type || 'process'} />
+                   {/* The Symbol: Centered (z-10 puts it on top of the line) */}
+                   <div className="relative z-10 flex justify-center items-center h-full w-full">
+                     <div className="bg-white p-1">
+                        <FlowSymbol type={step.symbol_type || 'process'} />
                      </div>
                    </div>
                 </td>
 
-                {/* SC Column - Centered Symbol */}
-                <td className="border border-black p-1 text-center align-top pt-3">
+                {/* 4. SC Column */}
+                <td className="border border-black p-1 text-center align-middle">
                   {step.special_characteristics && (
                     <div className="flex justify-center items-center">
                        <SpecialSymbol code={step.special_characteristics.symbol_code} />
@@ -114,8 +120,8 @@ export default async function ProcessFlowPrintPage({
                   )}
                 </td>
                 
-                {/* Remarks - Using RichText here too */}
-                <td className="border border-black p-2 align-top">
+                {/* 5. Remarks */}
+                <td className="border border-black p-2 align-middle">
                   <RichText content={step.remarks} />
                 </td>
               </tr>
