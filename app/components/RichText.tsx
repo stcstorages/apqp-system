@@ -7,30 +7,32 @@ export default function RichText({ content }: { content: string | null }) {
   const lines = content.split('\n')
 
   return (
-    <div className="text-left">
+    <div className="text-left w-full">
       {lines.map((line, index) => {
         let symbolCode = null
         let cleanLine = line
 
-        // Check for Shortcodes
-        if (line.trim().startsWith('[S]')) {
+        // Check for Shortcodes (Case insensitive)
+        // [S] = Safety, [F] or [C] = Fitment/Function
+        if (line.toUpperCase().includes('[S]')) {
           symbolCode = 'circle_double_plus'
-          cleanLine = line.replace('[S]', '').trim()
-        } else if (line.trim().startsWith('[F]') || line.trim().startsWith('[C]')) {
+          cleanLine = line.replace(/\[S\]/i, '').trim()
+        } else if (line.toUpperCase().includes('[F]') || line.toUpperCase().includes('[C]')) {
           symbolCode = 'circle_plus'
-          cleanLine = line.replace(/\[(F|C)\]/, '').trim()
+          cleanLine = line.replace(/\[(F|C)\]/i, '').trim()
         }
 
         return (
-          <div key={index} className="flex items-start gap-2 min-h-[14px]">
-            {/* Render Symbol if found, otherwise empty spacer to keep alignment if needed */}
+          <div key={index} className="flex items-start justify-between gap-2 min-h-[14px]">
+            {/* 1. The Text comes FIRST now */}
+            <span className="whitespace-pre-wrap flex-1">{cleanLine}</span>
+            
+            {/* 2. The Symbol comes LAST */}
             {symbolCode && (
               <div className="flex-shrink-0 mt-[2px]">
                 <SpecialSymbol code={symbolCode} />
               </div>
             )}
-            {/* The Text */}
-            <span className="whitespace-pre-wrap">{cleanLine}</span>
           </div>
         )
       })}
