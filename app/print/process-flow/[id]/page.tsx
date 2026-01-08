@@ -65,10 +65,11 @@ export default async function ProcessFlowPrintPage({
           <tr className="bg-gray-100 text-center">
             <th className="border border-black p-2 w-12">Step</th>
             <th className="border border-black p-2">Process / Operation Name</th>
-            {/* WIDENED COLUMN TO w-24 to fit the Reject box */}
-            <th className="border border-black p-2 w-24">Symbol</th>
+            {/* WIDENED to w-32 (approx 128px) to fit REJECT box */}
+            <th className="border border-black p-2 w-32">Symbol</th>
             <th className="border border-black p-2 w-10">SC</th>
-            <th className="border border-black p-2 w-48">Remarks / Freq</th>
+            {/* Reduced width slightly to compensate */}
+            <th className="border border-black p-2 w-40">Remarks / Freq</th>
           </tr>
         </thead>
         <tbody>
@@ -78,15 +79,13 @@ export default async function ProcessFlowPrintPage({
             
             return (
               <tr key={step.id}>
-                {/* 1. Step Number */}
                 <td className="border border-black p-2 text-center font-bold align-middle">{step.step_number}</td>
                 
-                {/* 2. Description */}
                 <td className="border border-black p-2 uppercase align-middle">
                   <RichText content={step.description} />
                 </td>
 
-                {/* 3. SYMBOL COLUMN */}
+                {/* SYMBOL COLUMN */}
                 <td className="border border-black p-0 h-[80px] align-middle relative overflow-visible">
                    
                    {/* Top Line */}
@@ -105,7 +104,7 @@ export default async function ProcessFlowPrintPage({
                      ></div>
                    )}
 
-                   {/* OK Label (Vertical Flow) */}
+                   {/* OK Label */}
                    {isInspection && !isLast && (
                       <div className="absolute left-[55%] bottom-[5%] text-[8px] font-bold bg-white px-0.5 z-20">OK</div>
                    )}
@@ -113,15 +112,14 @@ export default async function ProcessFlowPrintPage({
                    {/* --- NG / REJECT BRANCH LOGIC --- */}
                    {isInspection && (
                      <>
-                        {/* 1. Horizontal Line: Center Symbol to Left Box */}
-                        {/* Width is 50% minus padding for box */}
-                        <div className="absolute top-1/2 left-[38px] right-[50%] h-[1px] bg-black z-0"></div>
+                        {/* 1. Horizontal Line: From Box (approx 30px) to Center Line */}
+                        <div className="absolute top-1/2 left-[30px] right-[50%] h-[1px] bg-black z-0"></div>
                         
-                        {/* 2. NG Label: Positioned slightly above the horizontal line */}
-                        <div className="absolute top-[35%] left-[45%] text-[8px] font-bold bg-white px-0.5 z-20">NG</div>
+                        {/* 2. NG Label */}
+                        <div className="absolute top-[35%] left-[42%] text-[8px] font-bold bg-white px-0.5 z-20">NG</div>
 
-                        {/* 3. REJECT BOX: Anchored to the LEFT of the cell */}
-                        <div className="absolute top-1/2 left-1 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-1 py-0.5 z-20 border border-black">
+                        {/* 3. REJECT BOX: Anchored Left */}
+                        <div className="absolute top-1/2 left-1 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-1 py-0.5 z-20 border border-black shadow-sm">
                           REJECT
                         </div>
                      </>
@@ -135,7 +133,6 @@ export default async function ProcessFlowPrintPage({
                    </div>
                 </td>
 
-                {/* 4. SC Column */}
                 <td className="border border-black p-1 text-center align-middle">
                   {step.special_characteristics && (
                     <div className="flex justify-center items-center">
@@ -144,7 +141,6 @@ export default async function ProcessFlowPrintPage({
                   )}
                 </td>
                 
-                {/* 5. Remarks */}
                 <td className="border border-black p-2 align-middle">
                   <RichText content={step.remarks} />
                 </td>
