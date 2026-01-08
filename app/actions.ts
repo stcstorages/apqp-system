@@ -100,7 +100,7 @@ export async function deleteProcessStep(formData: FormData) {
   revalidatePath(`/projects/${projectId}/process-flow`)
 }
 
-// --- FMEA ---
+// --- FMEA ACTIONS ---
 
 export async function addFmeaRow(formData: FormData) {
   const supabase = await createClient()
@@ -110,11 +110,12 @@ export async function addFmeaRow(formData: FormData) {
   
   const failure_mode = formData.get('failure_mode') as string
   const failure_effect = formData.get('failure_effect') as string
-  const severity = parseInt(formData.get('severity') as string)
+  const severity = parseInt(formData.get('severity') as string) || 0
   const cause = formData.get('cause') as string
-  const occurrence = parseInt(formData.get('occurrence') as string)
+  const occurrence = parseInt(formData.get('occurrence') as string) || 0
   const current_controls = formData.get('current_controls') as string
-  const detection = parseInt(formData.get('detection') as string)
+  const detection = parseInt(formData.get('detection') as string) || 0
+  const specialCharId = formData.get('special_char_id') as string || null // NEW
 
   const { error } = await supabase.from('pfmea_records').insert({
     step_id: stepId,
@@ -124,10 +125,41 @@ export async function addFmeaRow(formData: FormData) {
     cause,
     occurrence,
     current_controls,
-    detection
+    detection,
+    special_char_id: specialCharId // NEW
   })
 
   if (error) { console.error('Error adding FMEA row:', error); return; }
+
+  revalidatePath(`/projects/${projectId}/fmea`)
+}
+
+export async function updateFmeaRow(formData: FormData) {
+  const supabase = await createClient()
+  const id = formData.get('row_id') as string
+  const projectId = formData.get('project_id') as string
+  
+  const failure_mode = formData.get('failure_mode') as string
+  const failure_effect = formData.get('failure_effect') as string
+  const severity = parseInt(formData.get('severity') as string) || 0
+  const specialCharId = formData.get('special_char_id') as string || null
+  const cause = formData.get('cause') as string
+  const occurrence = parseInt(formData.get('occurrence') as string) || 0
+  const current_controls = formData.get('current_controls') as string
+  const detection = parseInt(formData.get('detection') as string) || 0
+
+  const { error } = await supabase.from('pfmea_records').update({
+    failure_mode,
+    failure_effect,
+    severity,
+    special_char_id: specialCharId,
+    cause,
+    occurrence,
+    current_controls,
+    detection
+  }).eq('id', id)
+
+  if (error) console.error('Error updating FMEA row:', error)
 
   revalidatePath(`/projects/${projectId}/fmea`)
 }
