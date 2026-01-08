@@ -28,7 +28,7 @@ export default async function ControlPlanPrintPage({
         }
       `}</style>
 
-      {/* HEADER - Fully Connected */}
+      {/* HEADER - Connected to Database */}
       <div className="mb-2 text-xs">
         <div className="font-bold text-lg text-center mb-2">CONTROL PLAN</div>
         
@@ -43,18 +43,22 @@ export default async function ControlPlanPrintPage({
         <div className="border border-black flex">
            {/* Left Block */}
            <div className="w-1/3 border-r border-black">
+              {/* Row 1 */}
               <div className="border-b border-black p-1 h-8">
                  <div className="text-[8px] text-gray-500">Control Plan Number</div>
                  <div>{project.cp_number || '-'}</div>
               </div>
-              <div className="border-b border-black p-1 h-8">
+              {/* Row 2 - TALLER (h-14) */}
+              <div className="border-b border-black p-1 h-14 flex flex-col justify-center">
                  <div className="text-[8px] text-gray-500">Part Number/Latest Change Level</div>
                  <div>{project.part_number}</div>
               </div>
+              {/* Row 3 */}
               <div className="border-b border-black p-1 h-8">
                  <div className="text-[8px] text-gray-500">Part Name/Description</div>
                  <div>{project.name}</div>
               </div>
+              {/* Row 4 */}
               <div className="flex h-8">
                  <div className="w-1/2 border-r border-black p-1">
                     <div className="text-[8px] text-gray-500">Supplier/Plant</div>
@@ -69,18 +73,24 @@ export default async function ControlPlanPrintPage({
 
            {/* Middle Block */}
            <div className="w-1/3 border-r border-black">
+              {/* Row 1 */}
               <div className="border-b border-black p-1 h-8">
                  <div className="text-[8px] text-gray-500">Key Contact/Phone</div>
                  <div>{project.key_contact || '-'}</div>
               </div>
-              <div className="border-b border-black p-1 h-8">
+              {/* Row 2 - TALLER (h-14) for CORE TEAM */}
+              <div className="border-b border-black p-1 h-14 overflow-hidden">
                  <div className="text-[8px] text-gray-500">Core Team</div>
-                 <div>{project.core_team || '-'}</div>
+                 <div className="text-[9px] leading-tight break-words whitespace-normal">
+                    {project.core_team || '-'}
+                 </div>
               </div>
+              {/* Row 3 */}
               <div className="border-b border-black p-1 h-8">
                  <div className="text-[8px] text-gray-500">Supplier/Plant Approval/Date</div>
                  <div>-</div>
               </div>
+              {/* Row 4 */}
               <div className="p-1 h-8">
                  <div className="text-[8px] text-gray-500">Other Approval/Date</div>
                  <div>{project.other_approval || '-'}</div>
@@ -89,6 +99,7 @@ export default async function ControlPlanPrintPage({
 
            {/* Right Block */}
            <div className="w-1/3">
+              {/* Row 1 */}
               <div className="border-b border-black flex h-8">
                  <div className="w-1/2 border-r border-black p-1">
                     <div className="text-[8px] text-gray-500">Date (Orig.)</div>
@@ -99,14 +110,17 @@ export default async function ControlPlanPrintPage({
                     <div>{project.cp_date_rev || '-'}</div>
                  </div>
               </div>
-              <div className="border-b border-black p-1 h-8">
+              {/* Row 2 - TALLER (h-14) */}
+              <div className="border-b border-black p-1 h-14 flex flex-col justify-center">
                  <div className="text-[8px] text-gray-500">Customer Engineering Approval/Date</div>
                  <div>{project.customer_eng_approval || '-'}</div>
               </div>
+              {/* Row 3 */}
               <div className="border-b border-black p-1 h-8">
                  <div className="text-[8px] text-gray-500">Customer Quality Approval/Date</div>
                  <div>{project.customer_quality_approval || '-'}</div>
               </div>
+              {/* Row 4 */}
               <div className="p-1 h-8">
                  <div className="text-[8px] text-gray-500">Other Approval/Date</div>
                  <div>{project.other_approval || '-'}</div>
