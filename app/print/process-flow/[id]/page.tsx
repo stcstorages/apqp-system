@@ -60,16 +60,17 @@ export default async function ProcessFlowPrintPage({
       </div>
 
       {/* TABLE */}
-      <table className="w-full border-collapse border border-black text-xs mb-4">
+      <table className="w-full border-collapse border border-black text-xs mb-4 table-fixed">
         <thead>
           <tr className="bg-gray-100 text-center">
-            <th className="border border-black p-2 w-12">Step</th>
-            <th className="border border-black p-2">Process / Operation Name</th>
-            {/* WIDENED to w-32 (approx 128px) to fit REJECT box */}
-            <th className="border border-black p-2 w-32">Symbol</th>
+            <th className="border border-black p-2 w-10">Step</th>
+            {/* Process Name: Fixed width, forcing wrap */}
+            <th className="border border-black p-2 w-48">Process / Operation Name</th>
+            {/* Symbol: WIDENED to w-36 (~144px) for clear Reject logic */}
+            <th className="border border-black p-2 w-36">Symbol</th>
             <th className="border border-black p-2 w-10">SC</th>
-            {/* Reduced width slightly to compensate */}
-            <th className="border border-black p-2 w-40">Remarks / Freq</th>
+            {/* Remarks: Takes remaining space */}
+            <th className="border border-black p-2">Remarks / Freq</th>
           </tr>
         </thead>
         <tbody>
@@ -79,13 +80,15 @@ export default async function ProcessFlowPrintPage({
             
             return (
               <tr key={step.id}>
+                {/* 1. Step */}
                 <td className="border border-black p-2 text-center font-bold align-middle">{step.step_number}</td>
                 
-                <td className="border border-black p-2 uppercase align-middle">
+                {/* 2. Description - Added break-words to ensure wrapping */}
+                <td className="border border-black p-2 uppercase align-middle break-words whitespace-normal">
                   <RichText content={step.description} />
                 </td>
 
-                {/* SYMBOL COLUMN */}
+                {/* 3. SYMBOL COLUMN */}
                 <td className="border border-black p-0 h-[80px] align-middle relative overflow-visible">
                    
                    {/* Top Line */}
@@ -112,14 +115,14 @@ export default async function ProcessFlowPrintPage({
                    {/* --- NG / REJECT BRANCH LOGIC --- */}
                    {isInspection && (
                      <>
-                        {/* 1. Horizontal Line: From Box (approx 30px) to Center Line */}
-                        <div className="absolute top-1/2 left-[30px] right-[50%] h-[1px] bg-black z-0"></div>
+                        {/* 1. Horizontal Line: From Box (45px) to Center Line (50%) */}
+                        <div className="absolute top-1/2 left-[45px] right-[50%] h-[1px] bg-black z-0"></div>
                         
-                        {/* 2. NG Label */}
-                        <div className="absolute top-[35%] left-[42%] text-[8px] font-bold bg-white px-0.5 z-20">NG</div>
+                        {/* 2. NG Label: Positioned explicitly using pixels to avoid overlap */}
+                        <div className="absolute top-[35%] left-[55px] text-[8px] font-bold bg-white px-0.5 z-20">NG</div>
 
-                        {/* 3. REJECT BOX: Anchored Left */}
-                        <div className="absolute top-1/2 left-1 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-1 py-0.5 z-20 border border-black shadow-sm">
+                        {/* 3. REJECT BOX: Fixed Left Position */}
+                        <div className="absolute top-1/2 left-1 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-2 py-1 z-20 border border-black shadow-sm">
                           REJECT
                         </div>
                      </>
@@ -133,6 +136,7 @@ export default async function ProcessFlowPrintPage({
                    </div>
                 </td>
 
+                {/* 4. SC Column */}
                 <td className="border border-black p-1 text-center align-middle">
                   {step.special_characteristics && (
                     <div className="flex justify-center items-center">
@@ -141,7 +145,8 @@ export default async function ProcessFlowPrintPage({
                   )}
                 </td>
                 
-                <td className="border border-black p-2 align-middle">
+                {/* 5. Remarks - Allowed to expand */}
+                <td className="border border-black p-2 align-top break-words whitespace-normal">
                   <RichText content={step.remarks} />
                 </td>
               </tr>
