@@ -28,16 +28,16 @@ export default async function ControlPlanPrintPage({
         }
       `}</style>
 
-      {/* HEADER - Matches AIAG Format */}
+      {/* HEADER - Fully Connected */}
       <div className="mb-2 text-xs">
         <div className="font-bold text-lg text-center mb-2">CONTROL PLAN</div>
         
-        {/* Checkboxes Row */}
+        {/* Phase Checkboxes */}
         <div className="flex gap-8 mb-2 text-[10px]">
-           <div className="flex items-center gap-1"><div className="w-3 h-3 border border-black"></div> Prototype</div>
-           <div className="flex items-center gap-1"><div className="w-3 h-3 border border-black"></div> Pre-Launch</div>
-           <div className="flex items-center gap-1"><div className="w-3 h-3 border border-black bg-black"></div> Production</div>
-           <div className="flex items-center gap-1"><div className="w-3 h-3 border border-black"></div> Safe Launch</div>
+           <div className="flex items-center gap-1"><div className={`w-3 h-3 border border-black ${project.cp_phase === 'prototype' ? 'bg-black' : ''}`}></div> Prototype</div>
+           <div className="flex items-center gap-1"><div className={`w-3 h-3 border border-black ${project.cp_phase === 'pre-launch' ? 'bg-black' : ''}`}></div> Pre-Launch</div>
+           <div className="flex items-center gap-1"><div className={`w-3 h-3 border border-black ${project.cp_phase === 'production' ? 'bg-black' : ''}`}></div> Production</div>
+           <div className="flex items-center gap-1"><div className={`w-3 h-3 border border-black ${project.cp_phase === 'safe-launch' ? 'bg-black' : ''}`}></div> Safe Launch</div>
         </div>
 
         <div className="border border-black flex">
@@ -45,7 +45,7 @@ export default async function ControlPlanPrintPage({
            <div className="w-1/3 border-r border-black">
               <div className="border-b border-black p-1 h-8">
                  <div className="text-[8px] text-gray-500">Control Plan Number</div>
-                 <div>STCS/CP/{project.part_number}</div>
+                 <div>{project.cp_number || '-'}</div>
               </div>
               <div className="border-b border-black p-1 h-8">
                  <div className="text-[8px] text-gray-500">Part Number/Latest Change Level</div>
@@ -71,11 +71,11 @@ export default async function ControlPlanPrintPage({
            <div className="w-1/3 border-r border-black">
               <div className="border-b border-black p-1 h-8">
                  <div className="text-[8px] text-gray-500">Key Contact/Phone</div>
-                 <div>-</div>
+                 <div>{project.key_contact || '-'}</div>
               </div>
               <div className="border-b border-black p-1 h-8">
                  <div className="text-[8px] text-gray-500">Core Team</div>
-                 <div>-</div>
+                 <div>{project.core_team || '-'}</div>
               </div>
               <div className="border-b border-black p-1 h-8">
                  <div className="text-[8px] text-gray-500">Supplier/Plant Approval/Date</div>
@@ -83,7 +83,7 @@ export default async function ControlPlanPrintPage({
               </div>
               <div className="p-1 h-8">
                  <div className="text-[8px] text-gray-500">Other Approval/Date</div>
-                 <div>-</div>
+                 <div>{project.other_approval || '-'}</div>
               </div>
            </div>
 
@@ -92,24 +92,24 @@ export default async function ControlPlanPrintPage({
               <div className="border-b border-black flex h-8">
                  <div className="w-1/2 border-r border-black p-1">
                     <div className="text-[8px] text-gray-500">Date (Orig.)</div>
-                    <div>{new Date().toLocaleDateString()}</div>
+                    <div>{project.cp_date_orig || '-'}</div>
                  </div>
                  <div className="w-1/2 p-1">
                     <div className="text-[8px] text-gray-500">Date (Rev.)</div>
-                    <div>-</div>
+                    <div>{project.cp_date_rev || '-'}</div>
                  </div>
               </div>
               <div className="border-b border-black p-1 h-8">
                  <div className="text-[8px] text-gray-500">Customer Engineering Approval/Date</div>
-                 <div>-</div>
+                 <div>{project.customer_eng_approval || '-'}</div>
               </div>
               <div className="border-b border-black p-1 h-8">
                  <div className="text-[8px] text-gray-500">Customer Quality Approval/Date</div>
-                 <div>-</div>
+                 <div>{project.customer_quality_approval || '-'}</div>
               </div>
               <div className="p-1 h-8">
                  <div className="text-[8px] text-gray-500">Other Approval/Date</div>
-                 <div>-</div>
+                 <div>{project.other_approval || '-'}</div>
               </div>
            </div>
         </div>
@@ -138,24 +138,18 @@ export default async function ControlPlanPrintPage({
         <tbody>
           {steps?.map((step) => {
              const cpRows: any[] = [];
-             
-             // Gather all CP records from all risks in this step
              step.pfmea_records.forEach((risk: any) => {
-                // Pass the symbol code down to the CP row for display
                 const symbolCode = risk.special_characteristics?.symbol_code;
-                
                 if (risk.control_plan_records.length > 0) {
                     risk.control_plan_records.forEach((cp: any) => {
-                        cpRows.push({ ...cp, symbolCode }); // Attach symbol
+                        cpRows.push({ ...cp, symbolCode });
                     });
                 }
              });
-
              if (cpRows.length === 0) cpRows.push({});
 
              return cpRows.map((cp: any, index: number) => (
                <tr key={cp.id || `${step.id}-${index}`}>
-                 {/* Step Info (Merged) */}
                  {index === 0 && (
                    <>
                      <td className="border border-black p-1 text-center align-top font-bold bg-gray-50" rowSpan={cpRows.length}>
@@ -169,16 +163,12 @@ export default async function ControlPlanPrintPage({
                      </td>
                    </>
                  )}
-                 
                  <td className="border border-black p-1 text-center">{index + 1}</td>
                  <td className="border border-black p-1">{cp.characteristic_product || ''}</td>
                  <td className="border border-black p-1">{cp.characteristic_process || ''}</td>
-                 
-                 {/* Special Characteristic Symbol */}
                  <td className="border border-black p-1 text-center">
                     {cp.symbolCode && <SpecialSymbol code={cp.symbolCode} />}
                  </td>
-                 
                  <td className="border border-black p-1">{cp.specification_tolerance || ''}</td>
                  <td className="border border-black p-1">{cp.eval_measurement_technique || ''}</td>
                  <td className="border border-black p-1 text-center">{cp.sample_size || ''}</td>
