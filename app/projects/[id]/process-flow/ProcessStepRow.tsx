@@ -14,28 +14,24 @@ export default function ProcessStepRow({ step, scLibrary, projectId }: Props) {
   const router = useRouter()
   const [isChanged, setIsChanged] = useState(false)
 
-  // Local State: Keeps the inputs "Alive" so they don't revert
+  // Local State
   const [stepNumber, setStepNumber] = useState(step.step_number)
   const [symbolType, setSymbolType] = useState(step.symbol_type || 'process')
   const [description, setDescription] = useState(step.description)
   const [specialCharId, setSpecialCharId] = useState(step.special_char_id || "")
   const [remarks, setRemarks] = useState(step.remarks || "")
 
-  // Helper to update state and enable the save button
   const handleInput = (setter: any, value: string) => {
     setter(value)
     setIsChanged(true)
   }
 
   return (
-    <li className="p-2 hover:bg-gray-50 transition duration-150">
+    <li className="p-2 hover:bg-gray-50 transition duration-150 border-b border-gray-100">
       <form 
         action={async (formData) => {
-          // 1. Send data to server
           await updateProcessStep(formData)
-          // 2. Disable button (Visual feedback that save is done)
           setIsChanged(false)
-          // 3. Refresh background data (Optional, keeps other tabs in sync)
           router.refresh()
         }} 
         className="flex items-start gap-2"
@@ -67,32 +63,36 @@ export default function ProcessStepRow({ step, scLibrary, projectId }: Props) {
         </select>
 
         {/* Details Column */}
-        <div className="flex-1 space-y-1">
-           <input 
+        <div className="flex-1 space-y-2">
+           {/* Description - Converted to Textarea for multiline lists */}
+           <textarea 
              name="description" 
              value={description}
              onChange={(e) => handleInput(setDescription, e.target.value)}
-             className="w-full border-gray-300 rounded text-sm p-1 font-semibold focus:border-blue-500" 
-             placeholder="Description" 
+             className="w-full border-gray-300 rounded text-sm p-1 font-semibold focus:border-blue-500 min-h-[60px]" 
+             placeholder="Description (Use [S] for Safety items)" 
            />
+           
            <div className="flex gap-2">
              <select 
                name="special_char_id" 
                value={specialCharId}
                onChange={(e) => handleInput(setSpecialCharId, e.target.value)}
-               className="w-1/2 text-xs border-gray-300 rounded p-1 bg-white text-gray-600 focus:border-blue-500"
+               className="w-1/3 text-xs border-gray-300 rounded p-1 bg-white text-gray-600 focus:border-blue-500"
              >
-               <option value="">- No SC -</option>
+               <option value="">- Main SC -</option>
                {scLibrary?.map((sc: any) => (
                  <option key={sc.id} value={sc.id}>{sc.name}</option>
                ))}
              </select>
-             <input 
+             
+             {/* Remarks - Converted to Textarea */}
+             <textarea 
                name="remarks" 
                value={remarks}
                onChange={(e) => handleInput(setRemarks, e.target.value)}
-               className="w-1/2 text-xs border-gray-300 rounded p-1 text-gray-600 focus:border-blue-500" 
-               placeholder="Remarks/Freq" 
+               className="w-2/3 text-xs border-gray-300 rounded p-1 text-gray-600 focus:border-blue-500 min-h-[40px]" 
+               placeholder="Remarks / List... Use [S] for symbol" 
              />
            </div>
         </div>
