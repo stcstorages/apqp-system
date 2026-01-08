@@ -23,13 +23,15 @@ export default function RichText({ content }: { content: string | null }) {
         }
 
         return (
-          <div key={index} className="flex items-start justify-between gap-2 min-h-[14px]">
-            {/* 1. The Text comes FIRST now */}
-            <span className="whitespace-pre-wrap flex-1">{cleanLine}</span>
+          // CHANGED: Removed 'justify-between', added 'justify-start'
+          <div key={index} className="flex items-start justify-start gap-2 min-h-[14px]">
             
-            {/* 2. The Symbol comes LAST */}
+            {/* 1. The Text: Removed 'flex-1' so it doesn't push the symbol away */}
+            <span className="whitespace-pre-wrap">{cleanLine}</span>
+            
+            {/* 2. The Symbol: Appears immediately after the text */}
             {symbolCode && (
-              <div className="flex-shrink-0 mt-[2px]">
+              <div className="flex-shrink-0 mt-[1px]">
                 <SpecialSymbol code={symbolCode} />
               </div>
             )}
