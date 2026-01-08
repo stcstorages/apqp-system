@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import SpecialSymbol from '@/app/components/SpecialSymbol'
 
 export default async function ControlPlanPrintPage({
   params,
@@ -10,98 +11,188 @@ export default async function ControlPlanPrintPage({
 
   const { data: project } = await supabase.from('projects').select('*').eq('id', id).single()
 
-  // Fetch Deep Data
   const { data: steps } = await supabase
     .from('process_steps')
-    .select(`*, pfmea_records (*, control_plan_records (*))`)
+    .select(`*, pfmea_records (*, control_plan_records (*), special_characteristics(symbol_code))`)
     .eq('project_id', id)
     .order('step_number', { ascending: true })
 
   return (
     <div className="min-h-screen bg-white text-black p-4 print-container">
-      {/* 1. Header */}
-      <div className="border-2 border-black mb-4">
-        <div className="grid grid-cols-4 divide-x-2 divide-black border-b-2 border-black">
-          <div className="col-span-1 p-2 font-bold text-xl flex items-center justify-center bg-gray-100">
-            CONTROL PLAN
-          </div>
-          <div className="col-span-3 p-2">
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              <div><span className="font-bold">Project:</span> {project.name}</div>
-              <div><span className="font-bold">Part Number:</span> {project.part_number}</div>
-              <div><span className="font-bold">Customer:</span> {project.customer}</div>
-              <div><span className="font-bold">Date:</span> {new Date().toLocaleDateString()}</div>
-            </div>
-          </div>
+      <style>{`
+        @media print {
+          @page { size: landscape; margin: 5mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: Arial, sans-serif; }
+          table { font-size: 9px; }
+          .print-border-black { border-color: #000 !important; }
+        }
+      `}</style>
+
+      {/* HEADER - Matches AIAG Format */}
+      <div className="mb-2 text-xs">
+        <div className="font-bold text-lg text-center mb-2">CONTROL PLAN</div>
+        
+        {/* Checkboxes Row */}
+        <div className="flex gap-8 mb-2 text-[10px]">
+           <div className="flex items-center gap-1"><div className="w-3 h-3 border border-black"></div> Prototype</div>
+           <div className="flex items-center gap-1"><div className="w-3 h-3 border border-black"></div> Pre-Launch</div>
+           <div className="flex items-center gap-1"><div className="w-3 h-3 border border-black bg-black"></div> Production</div>
+           <div className="flex items-center gap-1"><div className="w-3 h-3 border border-black"></div> Safe Launch</div>
+        </div>
+
+        <div className="border border-black flex">
+           {/* Left Block */}
+           <div className="w-1/3 border-r border-black">
+              <div className="border-b border-black p-1 h-8">
+                 <div className="text-[8px] text-gray-500">Control Plan Number</div>
+                 <div>STCS/CP/{project.part_number}</div>
+              </div>
+              <div className="border-b border-black p-1 h-8">
+                 <div className="text-[8px] text-gray-500">Part Number/Latest Change Level</div>
+                 <div>{project.part_number}</div>
+              </div>
+              <div className="border-b border-black p-1 h-8">
+                 <div className="text-[8px] text-gray-500">Part Name/Description</div>
+                 <div>{project.name}</div>
+              </div>
+              <div className="flex h-8">
+                 <div className="w-1/2 border-r border-black p-1">
+                    <div className="text-[8px] text-gray-500">Supplier/Plant</div>
+                    <div>Internal</div>
+                 </div>
+                 <div className="w-1/2 p-1">
+                    <div className="text-[8px] text-gray-500">Supplier Code</div>
+                    <div>-</div>
+                 </div>
+              </div>
+           </div>
+
+           {/* Middle Block */}
+           <div className="w-1/3 border-r border-black">
+              <div className="border-b border-black p-1 h-8">
+                 <div className="text-[8px] text-gray-500">Key Contact/Phone</div>
+                 <div>-</div>
+              </div>
+              <div className="border-b border-black p-1 h-8">
+                 <div className="text-[8px] text-gray-500">Core Team</div>
+                 <div>-</div>
+              </div>
+              <div className="border-b border-black p-1 h-8">
+                 <div className="text-[8px] text-gray-500">Supplier/Plant Approval/Date</div>
+                 <div>-</div>
+              </div>
+              <div className="p-1 h-8">
+                 <div className="text-[8px] text-gray-500">Other Approval/Date</div>
+                 <div>-</div>
+              </div>
+           </div>
+
+           {/* Right Block */}
+           <div className="w-1/3">
+              <div className="border-b border-black flex h-8">
+                 <div className="w-1/2 border-r border-black p-1">
+                    <div className="text-[8px] text-gray-500">Date (Orig.)</div>
+                    <div>{new Date().toLocaleDateString()}</div>
+                 </div>
+                 <div className="w-1/2 p-1">
+                    <div className="text-[8px] text-gray-500">Date (Rev.)</div>
+                    <div>-</div>
+                 </div>
+              </div>
+              <div className="border-b border-black p-1 h-8">
+                 <div className="text-[8px] text-gray-500">Customer Engineering Approval/Date</div>
+                 <div>-</div>
+              </div>
+              <div className="border-b border-black p-1 h-8">
+                 <div className="text-[8px] text-gray-500">Customer Quality Approval/Date</div>
+                 <div>-</div>
+              </div>
+              <div className="p-1 h-8">
+                 <div className="text-[8px] text-gray-500">Other Approval/Date</div>
+                 <div>-</div>
+              </div>
+           </div>
         </div>
       </div>
 
-      {/* 2. Data Table */}
-      <table className="w-full border-collapse border border-black text-[10px]">
+      {/* TABLE */}
+      <table className="w-full border-collapse border border-black">
         <thead>
-          <tr className="bg-gray-200 text-center">
-            <th className="border border-black p-1">Op No.</th>
-            <th className="border border-black p-1">Process Name</th>
-            <th className="border border-black p-1">Char. Product</th>
-            <th className="border border-black p-1">Char. Process</th>
-            <th className="border border-black p-1">Spec / Tol</th>
-            <th className="border border-black p-1">Eval Method</th>
-            <th className="border border-black p-1">Size</th>
-            <th className="border border-black p-1">Freq</th>
-            <th className="border border-black p-1">Control Method</th>
-            <th className="border border-black p-1">Reaction Plan</th>
+          <tr className="bg-gray-100 text-center font-bold">
+            <th className="border border-black p-1 w-8">Part/ Process<br/>No.</th>
+            <th className="border border-black p-1">Process Name/<br/>Operation Desc.</th>
+            <th className="border border-black p-1 w-24">Machine,<br/>Device, Jig,<br/>Tools</th>
+            <th className="border border-black p-1 w-6">No.</th>
+            <th className="border border-black p-1">Product</th>
+            <th className="border border-black p-1">Process</th>
+            <th className="border border-black p-1 w-8">Class</th>
+            <th className="border border-black p-1 w-20">Product/Process<br/>Spec/Tol</th>
+            <th className="border border-black p-1 w-20">Eval/Meas<br/>Technique</th>
+            <th className="border border-black p-1 w-8">Size</th>
+            <th className="border border-black p-1 w-8">Freq</th>
+            <th className="border border-black p-1 w-24">Control Method</th>
+            <th className="border border-black p-1 w-24">Reaction Plan</th>
+            <th className="border border-black p-1 w-16">Owner</th>
           </tr>
         </thead>
         <tbody>
           {steps?.map((step) => {
-             // Flatten the structure: Step -> Risks -> Control Plans
-             // We need to render a row for every Control Plan Record found under this step.
-             
-             // Collect all CP records for this step
              const cpRows: any[] = [];
+             
+             // Gather all CP records from all risks in this step
              step.pfmea_records.forEach((risk: any) => {
+                // Pass the symbol code down to the CP row for display
+                const symbolCode = risk.special_characteristics?.symbol_code;
+                
                 if (risk.control_plan_records.length > 0) {
-                    risk.control_plan_records.forEach((cp: any) => cpRows.push(cp));
+                    risk.control_plan_records.forEach((cp: any) => {
+                        cpRows.push({ ...cp, symbolCode }); // Attach symbol
+                    });
                 }
              });
 
-             // If no CP records, show one empty row for the Step
              if (cpRows.length === 0) cpRows.push({});
 
              return cpRows.map((cp: any, index: number) => (
-               <tr key={cp.id || index}>
-                 {/* Show Step Info only on first row */}
+               <tr key={cp.id || `${step.id}-${index}`}>
+                 {/* Step Info (Merged) */}
                  {index === 0 && (
                    <>
-                     <td className="border border-black p-1 text-center font-bold" rowSpan={cpRows.length}>
+                     <td className="border border-black p-1 text-center align-top font-bold bg-gray-50" rowSpan={cpRows.length}>
                        {step.step_number}
                      </td>
-                     <td className="border border-black p-1" rowSpan={cpRows.length}>
+                     <td className="border border-black p-1 align-top uppercase" rowSpan={cpRows.length}>
                        {step.description}
+                     </td>
+                     <td className="border border-black p-1 align-top" rowSpan={cpRows.length}>
+                       {step.machine_tools}
                      </td>
                    </>
                  )}
                  
-                 <td className="border border-black p-1">{cp.characteristic_product || '-'}</td>
-                 <td className="border border-black p-1">{cp.characteristic_process || '-'}</td>
-                 <td className="border border-black p-1">{cp.specification_tolerance || '-'}</td>
-                 <td className="border border-black p-1">{cp.eval_measurement_technique || '-'}</td>
-                 <td className="border border-black p-1 text-center">{cp.sample_size || '-'}</td>
-                 <td className="border border-black p-1 text-center">{cp.sample_freq || '-'}</td>
-                 <td className="border border-black p-1 font-bold bg-gray-50">{cp.control_method || '-'}</td>
-                 <td className="border border-black p-1">{cp.reaction_plan || '-'}</td>
+                 <td className="border border-black p-1 text-center">{index + 1}</td>
+                 <td className="border border-black p-1">{cp.characteristic_product || ''}</td>
+                 <td className="border border-black p-1">{cp.characteristic_process || ''}</td>
+                 
+                 {/* Special Characteristic Symbol */}
+                 <td className="border border-black p-1 text-center">
+                    {cp.symbolCode && <SpecialSymbol code={cp.symbolCode} />}
+                 </td>
+                 
+                 <td className="border border-black p-1">{cp.specification_tolerance || ''}</td>
+                 <td className="border border-black p-1">{cp.eval_measurement_technique || ''}</td>
+                 <td className="border border-black p-1 text-center">{cp.sample_size || ''}</td>
+                 <td className="border border-black p-1 text-center">{cp.sample_freq || ''}</td>
+                 <td className="border border-black p-1">{cp.control_method || ''}</td>
+                 <td className="border border-black p-1">{cp.reaction_plan || ''}</td>
+                 <td className="border border-black p-1">{cp.reaction_owner || ''}</td>
                </tr>
              ));
           })}
         </tbody>
       </table>
 
-      {/* 3. Auto-Print Script */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `window.onload = function() { window.print(); }`,
-        }}
-      />
+      <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
     </div>
   )
 }
