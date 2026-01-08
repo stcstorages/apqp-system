@@ -38,7 +38,7 @@ export default async function ProcessFlowPrintPage({
         }
       `}</style>
 
-      {/* HEADER */}
+      {/* HEADER - Connected to Project Settings */}
       <div className="border border-black mb-1">
         <div className="border-b border-black font-bold text-lg text-center p-2 uppercase">
           Process and Inspection Flow Chart
@@ -51,11 +51,11 @@ export default async function ProcessFlowPrintPage({
           <div className="p-1">DOC. NO.</div>
         </div>
         <div className="grid grid-cols-5 divide-x divide-black text-center">
-          <div className="p-1">N/A</div>
+          <div className="p-1 min-h-[24px]">{project.model || '-'}</div>
           <div className="p-1">{project.customer}</div>
           <div className="p-1">{project.name}</div>
           <div className="p-1">{project.part_number}</div>
-          <div className="p-1">STCS/PF/{project.part_number}</div>
+          <div className="p-1">{project.flow_number || '-'}</div>
         </div>
       </div>
 
@@ -63,10 +63,8 @@ export default async function ProcessFlowPrintPage({
       <table className="w-full border-collapse border border-black text-xs mb-4 table-fixed">
         <thead>
           <tr className="bg-gray-100 text-center">
-            {/* 1. WIDENED Step Column (w-14) to fix overlap */}
             <th className="border border-black p-2 w-14">Step</th>
             <th className="border border-black p-2 w-48">Process / Operation Name</th>
-            {/* 2. WIDENED Symbol Column (w-40) for REJECT spacing */}
             <th className="border border-black p-2 w-40">Symbol</th>
             <th className="border border-black p-2 w-10">SC</th>
             <th className="border border-black p-2">Remarks / Freq</th>
@@ -79,69 +77,28 @@ export default async function ProcessFlowPrintPage({
             
             return (
               <tr key={step.id}>
-                {/* Step Number */}
                 <td className="border border-black p-2 text-center font-bold align-middle">{step.step_number}</td>
-                
-                {/* Description */}
                 <td className="border border-black p-2 uppercase align-middle break-words whitespace-normal">
                   <RichText content={step.description} />
                 </td>
-
-                {/* SYMBOL COLUMN */}
                 <td className="border border-black p-0 h-[80px] align-middle relative overflow-visible">
-                   
-                   {/* Vertical Line: 75% Position */}
-                   {index > 0 && (
-                     <div 
-                       className="absolute left-3/4 top-0 w-[1px] bg-black -translate-x-1/2 z-0" 
-                       style={{ height: '50%' }}
-                     ></div>
-                   )}
-                   
-                   {!isLast && (
-                     <div 
-                       className="absolute left-3/4 top-1/2 w-[1px] bg-black -translate-x-1/2 z-0" 
-                       style={{ height: '50%' }}
-                     ></div>
-                   )}
-
-                   {/* OK Label */}
-                   {isInspection && !isLast && (
-                      <div className="absolute left-[78%] bottom-[5%] text-[8px] font-bold bg-white px-0.5 z-20">OK</div>
-                   )}
-
-                   {/* --- NG / REJECT BRANCH LOGIC --- */}
+                   {index > 0 && <div className="absolute left-3/4 top-0 w-[1px] bg-black -translate-x-1/2 z-0" style={{ height: '50%' }}></div>}
+                   {!isLast && <div className="absolute left-3/4 top-1/2 w-[1px] bg-black -translate-x-1/2 z-0" style={{ height: '50%' }}></div>}
+                   {isInspection && !isLast && <div className="absolute left-[78%] bottom-[5%] text-[8px] font-bold bg-white px-0.5 z-20">OK</div>}
                    {isInspection && (
                      <>
-                        {/* 1. Horizontal Line: From near Reject Box to Main Line (75%) */}
                         <div className="absolute top-1/2 left-[40px] right-[25%] h-[1px] bg-black z-0"></div>
-                        
-                        {/* 2. NG Label: Moved further right (65px) to clear the box */}
                         <div className="absolute top-[35%] left-[65px] text-[8px] font-bold bg-white px-0.5 z-20">NG</div>
-
-                        {/* 3. REJECT BOX */}
-                        <div className="absolute top-1/2 left-1 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-2 py-1 z-20 border border-black shadow-sm">
-                          REJECT
-                        </div>
+                        <div className="absolute top-1/2 left-1 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-2 py-1 z-20 border border-black shadow-sm">REJECT</div>
                      </>
                    )}
-
-                   {/* The Main Symbol: Centered on the 75% line */}
                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 pl-[50%]">
-                     <div className="bg-white p-1">
-                        <FlowSymbol type={step.symbol_type || 'process'} />
-                     </div>
+                     <div className="bg-white p-1"><FlowSymbol type={step.symbol_type || 'process'} /></div>
                    </div>
                 </td>
-
                 <td className="border border-black p-1 text-center align-middle">
-                  {step.special_characteristics && (
-                    <div className="flex justify-center items-center">
-                       <SpecialSymbol code={step.special_characteristics.symbol_code} />
-                    </div>
-                  )}
+                  {step.special_characteristics && <div className="flex justify-center items-center"><SpecialSymbol code={step.special_characteristics.symbol_code} /></div>}
                 </td>
-                
                 <td className="border border-black p-2 align-top break-words whitespace-normal">
                   <RichText content={step.remarks} />
                 </td>
@@ -154,7 +111,6 @@ export default async function ProcessFlowPrintPage({
       {/* FOOTER LEGEND */}
       <div className="border border-black text-[10px] break-inside-avoid">
         <div className="grid grid-cols-3 divide-x divide-black border-b border-black">
-          {/* Symbols */}
           <div>
              <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">PROCESS SYMBOLS</div>
              <div className="grid grid-cols-2 gap-1 p-2">
@@ -165,8 +121,6 @@ export default async function ProcessFlowPrintPage({
                 <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="transport"/></div> Delivery</div>
              </div>
           </div>
-          
-          {/* Legend */}
           <div>
              <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">KEY CHARACTERISTICS</div>
              <div className="p-2 space-y-1">
@@ -178,8 +132,6 @@ export default async function ProcessFlowPrintPage({
                ))}
              </div>
           </div>
-
-          {/* Signatures */}
           <div className="flex flex-col">
              <div className="grid grid-cols-3 divide-x divide-black bg-gray-100 font-bold text-center border-b border-black">
                 <div className="p-1">PREP</div>
@@ -195,7 +147,8 @@ export default async function ProcessFlowPrintPage({
         <div className="flex justify-between p-1 px-2 bg-gray-100 text-[9px]">
            <div>ISSUE NO: 1</div>
            <div>REVISION NO: 0</div>
-           <div>DATE: {new Date().toLocaleDateString()}</div>
+           {/* Connected Date Orig */}
+           <div>DATE: {project.flow_date_orig || '-'}</div>
         </div>
       </div>
 
