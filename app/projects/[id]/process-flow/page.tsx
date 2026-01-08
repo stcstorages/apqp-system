@@ -54,12 +54,12 @@ export default async function ProcessFlowPage({
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase">Symbol</label>
                 <select name="symbol_type" className="mt-1 block w-full rounded border border-gray-300 p-2 text-sm bg-white">
-                  <option value="start">Start/End</option>
-                  <option value="process">Process (○)</option>
-                  <option value="inspection">Inspection (◇)</option>
-                  <option value="storage">Storage (▽)</option>
-                  <option value="transport">Transport (→)</option>
-                  <option value="delay">Delay (D)</option>
+                  <option value="start">START</option>
+                  <option value="process">PROCESS</option>
+                  <option value="inspection">INSPECTION</option>
+                  <option value="inprocess">INPROCESS INSP</option>
+                  <option value="storage">STORAGE</option>
+                  <option value="delivery">DELIVERY/END</option>
                 </select>
               </div>
             </div>
