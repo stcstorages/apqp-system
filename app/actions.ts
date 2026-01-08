@@ -111,22 +111,40 @@ export async function addFmeaRow(formData: FormData) {
   const failure_mode = formData.get('failure_mode') as string
   const failure_effect = formData.get('failure_effect') as string
   const severity = parseInt(formData.get('severity') as string) || 0
+  const specialCharId = formData.get('special_char_id') as string || null
   const cause = formData.get('cause') as string
+  
+  // New / Split Columns
+  const control_prevention = formData.get('control_prevention') as string
   const occurrence = parseInt(formData.get('occurrence') as string) || 0
-  const current_controls = formData.get('current_controls') as string
+  const current_controls = formData.get('current_controls') as string // Detection
   const detection = parseInt(formData.get('detection') as string) || 0
-  const specialCharId = formData.get('special_char_id') as string || null // NEW
+  
+  // Action Results
+  const recommended_actions = formData.get('recommended_actions') as string
+  const responsibility = formData.get('responsibility') as string
+  const action_taken = formData.get('action_taken') as string
+  const act_severity = parseInt(formData.get('act_severity') as string) || null
+  const act_occurrence = parseInt(formData.get('act_occurrence') as string) || null
+  const act_detection = parseInt(formData.get('act_detection') as string) || null
 
   const { error } = await supabase.from('pfmea_records').insert({
     step_id: stepId,
     failure_mode,
     failure_effect,
     severity,
+    special_char_id: specialCharId,
     cause,
+    control_prevention,
     occurrence,
-    current_controls,
+    current_controls, // Acts as Detection Control
     detection,
-    special_char_id: specialCharId // NEW
+    recommended_actions,
+    responsibility,
+    action_taken,
+    act_severity,
+    act_occurrence,
+    act_detection
   })
 
   if (error) { console.error('Error adding FMEA row:', error); return; }
@@ -139,14 +157,22 @@ export async function updateFmeaRow(formData: FormData) {
   const id = formData.get('row_id') as string
   const projectId = formData.get('project_id') as string
   
+  // Extract all fields
   const failure_mode = formData.get('failure_mode') as string
   const failure_effect = formData.get('failure_effect') as string
   const severity = parseInt(formData.get('severity') as string) || 0
   const specialCharId = formData.get('special_char_id') as string || null
   const cause = formData.get('cause') as string
+  const control_prevention = formData.get('control_prevention') as string
   const occurrence = parseInt(formData.get('occurrence') as string) || 0
   const current_controls = formData.get('current_controls') as string
   const detection = parseInt(formData.get('detection') as string) || 0
+  const recommended_actions = formData.get('recommended_actions') as string
+  const responsibility = formData.get('responsibility') as string
+  const action_taken = formData.get('action_taken') as string
+  const act_severity = parseInt(formData.get('act_severity') as string) || null
+  const act_occurrence = parseInt(formData.get('act_occurrence') as string) || null
+  const act_detection = parseInt(formData.get('act_detection') as string) || null
 
   const { error } = await supabase.from('pfmea_records').update({
     failure_mode,
@@ -154,9 +180,16 @@ export async function updateFmeaRow(formData: FormData) {
     severity,
     special_char_id: specialCharId,
     cause,
+    control_prevention,
     occurrence,
     current_controls,
-    detection
+    detection,
+    recommended_actions,
+    responsibility,
+    action_taken,
+    act_severity,
+    act_occurrence,
+    act_detection
   }).eq('id', id)
 
   if (error) console.error('Error updating FMEA row:', error)
