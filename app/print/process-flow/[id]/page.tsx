@@ -12,7 +12,6 @@ export default async function ProcessFlowPrintPage({
   
   const { data: project } = await supabase.from('projects').select('*').eq('id', id).single()
   
-  // Fetch steps AND the linked special characteristic info
   const { data: steps } = await supabase
     .from('process_steps')
     .select(`
@@ -26,11 +25,18 @@ export default async function ProcessFlowPrintPage({
     .eq('project_id', id)
     .order('step_number', { ascending: true })
 
-  // Fetch library for the Legend
   const { data: scLibrary } = await supabase.from('special_characteristics').select('*')
 
   return (
     <div className="min-h-screen bg-white text-black p-4 text-xs font-sans print-container">
+      <style>{`
+        @media print {
+          @page { margin: 10mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print-border-black { border-color: #000 !important; }
+        }
+      `}</style>
+
       {/* HEADER */}
       <div className="border border-black mb-1">
         <div className="border-b border-black font-bold text-lg text-center p-2 uppercase">
@@ -66,44 +72,53 @@ export default async function ProcessFlowPrintPage({
         <tbody>
           {steps?.map((step, index) => {
             const isLast = index === (steps.length - 1);
+            
             return (
               <tr key={step.id}>
                 <td className="border border-black p-2 text-center font-bold">{step.step_number}</td>
                 
-                {/* Description + Connector to Symbol */}
-                <td className="border border-black p-2 uppercase relative pr-6">
-                  {step.description}
-                  {/* Horizontal Line connecting text to center symbol */}
-                  <div className="absolute right-0 top-1/2 w-full h-[1px] border-b border-black z-0 pointer-events-none opacity-20 hidden"></div>
+                {/* Description Column */}
+                <td className="border border-black p-0 relative">
+                  {/* Wrapper to align text and connector line */}
+                  <div className="relative h-full w-full p-2 flex items-center">
+                    <span className="uppercase z-10 bg-white pr-2">{step.description}</span>
+                    {/* Horizontal Connector Line (Text to Symbol) */}
+                    <div className="absolute right-0 top-1/2 w-full h-[1px] border-b border-black z-0"></div>
+                  </div>
                 </td>
 
-                {/* SYMBOL COLUMN - Fixed Connector Lines */}
-                <td className="border border-black p-0 text-center relative h-[50px] align-middle">
-                   
-                   {/* Vertical Line: Goes from top to bottom of cell */}
-                   {/* We use 'before' and 'after' logic or simple absolute divs */}
-                   
-                   {/* Top Line (Connects from previous) - Skip for first item */}
-                   {index > 0 && (
-                     <div className="absolute top-0 left-1/2 w-[1px] h-1/2 bg-black -translate-x-1/2 z-0"></div>
-                   )}
-                   
-                   {/* Bottom Line (Connects to next) - Skip for last item */}
-                   {!isLast && (
-                     <div className="absolute bottom-0 left-1/2 w-[1px] h-1/2 bg-black -translate-x-1/2 z-0"></div>
-                   )}
+                {/* SYMBOL COLUMN - Fixed with Wrapper Div */}
+                <td className="border border-black p-0 h-[50px]">
+                   <div className="relative h-full w-full flex items-center justify-center">
+                     
+                     {/* Top Vertical Line */}
+                     {index > 0 && (
+                       <div className="absolute top-0 left-1/2 h-1/2 border-l border-black -translate-x-1/2" style={{ borderColor: '#000', borderWidth: '0 0 0 1px' }}></div>
+                     )}
+                     
+                     {/* Bottom Vertical Line */}
+                     {!isLast && (
+                       <div className="absolute bottom-0 left-1/2 h-1/2 border-l border-black -translate-x-1/2" style={{ borderColor: '#000', borderWidth: '0 0 0 1px' }}></div>
+                     )}
 
-                   {/* The Symbol (White BG to hide line passing through it) */}
-                   <div className="relative z-10 bg-white inline-block p-1">
-                     <FlowSymbol type={step.symbol_type || 'process'} />
+                     {/* The Symbol (White BG to hide the crossing lines) */}
+                     <div className="relative z-10 bg-white p-1">
+                       <FlowSymbol type={step.symbol_type || 'process'} />
+                     </div>
                    </div>
                 </td>
 
+                {/* Special Characteristics */}
                 <td className="border border-black p-1 text-center">
                   {step.special_characteristics && (
-                    <SpecialSymbol code={step.special_characteristics.symbol_code} />
+                    <div className="flex justify-center items-center gap-2">
+                       <SpecialSymbol code={step.special_characteristics.symbol_code} />
+                       {/* Optional: Show name if needed, or just symbol */}
+                    </div>
                   )}
                 </td>
+                
+                {/* Remarks */}
                 <td className="border border-black p-2 text-center">{step.remarks}</td>
               </tr>
             )
@@ -111,21 +126,22 @@ export default async function ProcessFlowPrintPage({
         </tbody>
       </table>
 
-      {/* FOOTER LEGEND (Dynamic) */}
-      <div className="border border-black text-[10px]">
+      {/* FOOTER LEGEND */}
+      <div className="border border-black text-[10px] break-inside-avoid">
         <div className="grid grid-cols-3 divide-x divide-black border-b border-black">
           {/* Symbols */}
           <div>
              <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">PROCESS SYMBOLS</div>
              <div className="grid grid-cols-2 gap-1 p-2">
-                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="start"/></div> Start</div>
+                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="start"/></div> Start/End</div>
                 <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="process"/></div> Process</div>
                 <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="inspection"/></div> Insp.</div>
                 <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="storage"/></div> Storage</div>
+                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="transport"/></div> Delivery</div>
              </div>
           </div>
           
-          {/* Special Characteristics (Dynamic from DB) */}
+          {/* Special Characteristics Legend */}
           <div>
              <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">KEY CHARACTERISTICS</div>
              <div className="p-2 space-y-1">
@@ -135,7 +151,7 @@ export default async function ProcessFlowPrintPage({
                     <SpecialSymbol code={sc.symbol_code} />
                  </div>
                ))}
-               {(!scLibrary || scLibrary.length === 0) && <div className="text-gray-400">No SC defined</div>}
+               {(!scLibrary || scLibrary.length === 0) && <div className="text-gray-400 italic">No SC defined</div>}
              </div>
           </div>
 
@@ -151,6 +167,14 @@ export default async function ProcessFlowPrintPage({
              </div>
           </div>
         </div>
+        
+        {/* Bottom Strip */}
+        <div className="flex justify-between p-1 px-2 bg-gray-100 text-[9px]">
+           <div>ISSUE NO: 1</div>
+           <div>REVISION NO: 0</div>
+           <div>DATE: {new Date().toLocaleDateString()}</div>
+        </div>
+
       </div>
 
       <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
