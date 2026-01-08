@@ -2,14 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import FlowSymbol from '@/app/components/FlowSymbol'
 import SpecialSymbol from '@/app/components/SpecialSymbol'
 import RichText from '@/app/components/RichText'
-
-// Format Date Helper
-const formatDate = (dateStr: string | null | undefined) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  if (isNaN(date.getTime())) return '-'
-  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')
-}
+import CustomerLogo from '@/app/components/CustomerLogo'
 
 export default async function ProcessFlowPrintPage({
   params,
@@ -20,18 +13,39 @@ export default async function ProcessFlowPrintPage({
   const supabase = await createClient()
   
   const { data: project } = await supabase.from('projects').select('*').eq('id', id).single()
-  const { data: steps } = await supabase.from('process_steps').select(`*, special_characteristics(name, symbol_code, description)`).eq('project_id', id).order('step_number', { ascending: true })
+  
+  const { data: steps } = await supabase
+    .from('process_steps')
+    .select(`*, special_characteristics (name, symbol_code, description)`)
+    .eq('project_id', id)
+    .order('step_number', { ascending: true })
+
   const { data: scLibrary } = await supabase.from('special_characteristics').select('*')
 
   return (
     <div className="min-h-screen bg-white text-black p-4 text-xs font-sans print-container">
       <style>{`
-        @media print { @page { margin: 10mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .print-border-black { border-color: #000 !important; } }
+        @media print {
+          @page { margin: 10mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print-border-black { border-color: #000 !important; }
+        }
       `}</style>
 
-      {/* HEADER */}
+      {/* LOGO HEADER */}
+      <div className="flex justify-between items-center mb-4">
+         {/* Your Company Logo (SIB) */}
+         <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
+         
+         {/* Customer Logo */}
+         <CustomerLogo customer={project.customer} />
+      </div>
+
+      {/* DOCUMENT HEADER */}
       <div className="border border-black mb-1">
-        <div className="border-b border-black font-bold text-lg text-center p-2 uppercase">Process and Inspection Flow Chart</div>
+        <div className="border-b border-black font-bold text-lg text-center p-2 uppercase">
+          Process and Inspection Flow Chart
+        </div>
         <div className="grid grid-cols-5 divide-x divide-black text-center bg-gray-100 font-bold border-b border-black">
           <div className="p-1">MODEL</div><div className="p-1">CUSTOMER</div><div className="p-1">PART NAME</div><div className="p-1">PART NO</div><div className="p-1">DOC. NO.</div>
         </div>
@@ -40,7 +54,7 @@ export default async function ProcessFlowPrintPage({
           <div className="p-1">{project.customer}</div>
           <div className="p-1">{project.name}</div>
           <div className="p-1">{project.part_number}</div>
-          <div className="p-1">{project.flow_number || '-'}</div>
+          <div className="p-1">STCS/PF/{project.part_number}</div>
         </div>
       </div>
 
@@ -105,9 +119,7 @@ export default async function ProcessFlowPrintPage({
              <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">KEY CHARACTERISTICS</div>
              <div className="p-2 space-y-1">
                {scLibrary?.map(sc => (
-                 <div key={sc.id} className="flex justify-between items-center border-b border-gray-100 last:border-0">
-                    <span>{sc.name}</span><SpecialSymbol code={sc.symbol_code} />
-                 </div>
+                 <div key={sc.id} className="flex justify-between items-center border-b border-gray-100 last:border-0"><span>{sc.name}</span><SpecialSymbol code={sc.symbol_code} /></div>
                ))}
              </div>
           </div>
@@ -117,9 +129,7 @@ export default async function ProcessFlowPrintPage({
           </div>
         </div>
         <div className="flex justify-between p-1 px-2 bg-gray-100 text-[9px]">
-           <div>ISSUE NO: 1</div>
-           <div>REVISION NO: 0</div>
-           <div>DATE: {formatDate(project.flow_date_orig) || '-'}</div>
+           <div>ISSUE NO: 1</div><div>REVISION NO: 0</div><div>DATE: {new Date().toLocaleDateString()}</div>
         </div>
       </div>
       <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
