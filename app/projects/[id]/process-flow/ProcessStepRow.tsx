@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { updateProcessStep, deleteProcessStep } from '@/app/actions'
 
 type Props = {
@@ -10,11 +11,19 @@ type Props = {
 }
 
 export default function ProcessStepRow({ step, scLibrary, projectId }: Props) {
-  // State to track if user has edited anything
+  const router = useRouter()
   const [isChanged, setIsChanged] = useState(false)
 
-  // When any input changes, enable the Save button
-  const handleChange = () => {
+  // Local State: Keeps the inputs "Alive" so they don't revert
+  const [stepNumber, setStepNumber] = useState(step.step_number)
+  const [symbolType, setSymbolType] = useState(step.symbol_type || 'process')
+  const [description, setDescription] = useState(step.description)
+  const [specialCharId, setSpecialCharId] = useState(step.special_char_id || "")
+  const [remarks, setRemarks] = useState(step.remarks || "")
+
+  // Helper to update state and enable the save button
+  const handleInput = (setter: any, value: string) => {
+    setter(value)
     setIsChanged(true)
   }
 
@@ -22,9 +31,12 @@ export default function ProcessStepRow({ step, scLibrary, projectId }: Props) {
     <li className="p-2 hover:bg-gray-50 transition duration-150">
       <form 
         action={async (formData) => {
-          // Wrap the server action so we can reset the state after success
+          // 1. Send data to server
           await updateProcessStep(formData)
-          setIsChanged(false) // Disable button again after save
+          // 2. Disable button (Visual feedback that save is done)
+          setIsChanged(false)
+          // 3. Refresh background data (Optional, keeps other tabs in sync)
+          router.refresh()
         }} 
         className="flex items-start gap-2"
       >
@@ -34,16 +46,16 @@ export default function ProcessStepRow({ step, scLibrary, projectId }: Props) {
         {/* Step No */}
         <input 
           name="step_number" 
-          defaultValue={step.step_number} 
-          onChange={handleChange}
+          value={stepNumber}
+          onChange={(e) => handleInput(setStepNumber, e.target.value)}
           className="w-12 text-center border-gray-300 rounded text-sm p-1 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" 
         />
         
         {/* Symbol Select */}
         <select 
           name="symbol_type" 
-          defaultValue={step.symbol_type || 'process'} 
-          onChange={handleChange}
+          value={symbolType}
+          onChange={(e) => handleInput(setSymbolType, e.target.value)}
           className="w-20 text-xs border-gray-300 rounded p-1 bg-white focus:border-blue-500"
         >
            <option value="start">Start</option>
@@ -51,22 +63,23 @@ export default function ProcessStepRow({ step, scLibrary, projectId }: Props) {
            <option value="inspection">Insp</option>
            <option value="storage">Stor</option>
            <option value="transport">Trans</option>
+           <option value="delay">Delay</option>
         </select>
 
         {/* Details Column */}
         <div className="flex-1 space-y-1">
            <input 
              name="description" 
-             defaultValue={step.description} 
-             onChange={handleChange}
+             value={description}
+             onChange={(e) => handleInput(setDescription, e.target.value)}
              className="w-full border-gray-300 rounded text-sm p-1 font-semibold focus:border-blue-500" 
              placeholder="Description" 
            />
            <div className="flex gap-2">
              <select 
                name="special_char_id" 
-               defaultValue={step.special_char_id || ""} 
-               onChange={handleChange}
+               value={specialCharId}
+               onChange={(e) => handleInput(setSpecialCharId, e.target.value)}
                className="w-1/2 text-xs border-gray-300 rounded p-1 bg-white text-gray-600 focus:border-blue-500"
              >
                <option value="">- No SC -</option>
@@ -76,8 +89,8 @@ export default function ProcessStepRow({ step, scLibrary, projectId }: Props) {
              </select>
              <input 
                name="remarks" 
-               defaultValue={step.remarks} 
-               onChange={handleChange}
+               value={remarks}
+               onChange={(e) => handleInput(setRemarks, e.target.value)}
                className="w-1/2 text-xs border-gray-300 rounded p-1 text-gray-600 focus:border-blue-500" 
                placeholder="Remarks/Freq" 
              />
@@ -86,11 +99,6 @@ export default function ProcessStepRow({ step, scLibrary, projectId }: Props) {
 
         {/* Actions */}
         <div className="flex flex-col gap-1">
-          {/* 
-             SAVE BUTTON LOGIC:
-             - If !isChanged: Text is Gray, Button Disabled
-             - If isChanged: Text is Blue, Button Enabled
-          */}
           <button 
             type="submit" 
             disabled={!isChanged}
@@ -105,7 +113,10 @@ export default function ProcessStepRow({ step, scLibrary, projectId }: Props) {
           </button>
 
           <button 
-            formAction={deleteProcessStep} 
+            formAction={async (formData) => {
+                await deleteProcessStep(formData)
+                router.refresh()
+            }}
             className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded" 
             title="Delete Step"
           >
