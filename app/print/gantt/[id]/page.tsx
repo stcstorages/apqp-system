@@ -1,6 +1,16 @@
 import { createClient } from '@/utils/supabase/server'
 import CustomerLogo from '@/app/components/CustomerLogo'
+import PrintControls from '@/app/components/PrintControls' // Import the new control
 
+// Format Date Helper (DD-MMM) - Shorter for the table column
+const formatDateShort = (dateStr: string | null | undefined) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return '-'
+  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+}
+
+// Format Date Helper (Full)
 const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
@@ -17,14 +27,9 @@ export default async function GanttPrintPage({
   const supabase = await createClient()
 
   const { data: project } = await supabase.from('projects').select('*').eq('id', id).single()
-  
-  // CHANGED: Sort by 'order_index' to match user's custom order
-  const { data: tasks } = await supabase
-    .from('gantt_tasks')
-    .select('*')
-    .eq('project_id', id)
-    .order('order_index', { ascending: true })
+  const { data: tasks } = await supabase.from('gantt_tasks').select('*').eq('project_id', id).order('order_index', { ascending: true })
 
+  // Calculate Timeline Bounds
   let minDate = new Date()
   let maxDate = new Date()
   if (tasks && tasks.length > 0) {
@@ -41,6 +46,7 @@ export default async function GanttPrintPage({
   maxDate = new Date(maxDate.getFullYear(), maxDate.getMonth() + 6, 0)
   const totalDuration = maxDate.getTime() - minDate.getTime()
 
+  // Generate Months
   const months = []
   const tempDate = new Date(minDate)
   while (tempDate < maxDate) {
@@ -54,13 +60,9 @@ export default async function GanttPrintPage({
 
   return (
     <div className="min-h-screen bg-white text-black text-[10px] font-sans">
-      <style>{`
-        @media print { 
-          @page { size: landscape; margin: 5mm; } 
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } 
-          .no-break { break-inside: avoid; } 
-        }
-      `}</style>
+      
+      {/* NEW: Client Component for Orientation Toggle */}
+      <PrintControls />
 
       {/* HEADER */}
       <div className="flex justify-between items-center mb-2">
@@ -78,25 +80,38 @@ export default async function GanttPrintPage({
         </div>
       </div>
 
-      {/* CONTENT */}
+      {/* MAIN CONTENT SPLIT */}
       <div className="flex border border-black">
+        
         {/* LEFT: DATA TABLE */}
         <div className="w-[300px] flex-shrink-0 border-r border-black flex flex-col">
-          <div className="h-8 border-b border-black bg-gray-200 flex items-center font-bold px-1">
-            <div className="w-8 text-center border-r border-gray-400">ID</div>
-            <div className="flex-1 px-2 border-r border-gray-400">Task Name</div>
-            <div className="w-16 text-center">Duration</div>
+          <div className="h-8 border-b border-black bg-gray-200 flex items-center font-bold px-1 text-center">
+            {/* 1. ID Column Removed */}
+            <div className="flex-1 px-2 border-r border-gray-400 text-left">Task Name</div>
+            {/* 2. Added Start Date Column */}
+            <div className="w-14 border-r border-gray-400">Start</div>
+            <div className="w-12">Dur.</div>
           </div>
+          
           {tasks?.map((task, index) => {
             const isHeader = task.type === 'project';
             const isChild = !!task.parent_id;
+
             return (
-              <div key={task.id} className={`h-6 border-b border-gray-200 flex items-center px-1 ${isHeader ? 'bg-gray-100 font-bold' : 'bg-white'}`}>
-                <div className="w-8 text-center border-r border-gray-200">{index + 1}</div>
+              <div 
+                key={task.id} 
+                className={`h-6 border-b border-gray-200 flex items-center px-1 ${isHeader ? 'bg-gray-100 font-bold' : 'bg-white'}`}
+              >
                 <div className={`flex-1 px-2 border-r border-gray-200 truncate ${isChild ? 'pl-4' : ''}`}>
-                   {isChild && '↳ '} {task.name}
+                   {task.name}
                 </div>
-                <div className="w-16 text-center">{isHeader ? '' : `${getDuration(task.start_date, task.end_date)} days`}</div>
+                {/* Start Date Column */}
+                <div className="w-14 text-center border-r border-gray-200 text-[9px]">
+                   {formatDateShort(task.start_date)}
+                </div>
+                <div className="w-12 text-center text-[9px]">
+                   {isHeader ? '' : `${getDuration(task.start_date, task.end_date)}d`}
+                </div>
               </div>
             )
           })}
@@ -104,6 +119,8 @@ export default async function GanttPrintPage({
 
         {/* RIGHT: GANTT CHART */}
         <div className="flex-1 relative overflow-hidden flex flex-col">
+          
+          {/* Month Header */}
           <div className="h-8 border-b border-black bg-white flex relative">
             {months.map((m, i) => (
               <div key={i} className="border-r border-gray-400 text-center flex items-center justify-center font-bold" style={{ width: `${(1 / months.length) * 100}%` }}>
@@ -111,9 +128,20 @@ export default async function GanttPrintPage({
               </div>
             ))}
           </div>
+
+          {/* Vertical Grid Lines (With Weeks) */}
           <div className="absolute top-8 bottom-0 left-0 right-0 flex z-0">
-             {months.map((_, i) => <div key={i} className="border-r border-gray-300 border-dashed h-full" style={{ width: `${(1 / months.length) * 100}%` }}></div>)}
+             {months.map((_, i) => (
+               <div key={i} className="border-r border-gray-400 h-full relative" style={{ width: `${(1 / months.length) * 100}%` }}>
+                  {/* 3. Thin Week Lines (Approximate 4 weeks per month) */}
+                  <div className="absolute left-[25%] top-0 bottom-0 border-r border-gray-200 border-dashed w-[1px]"></div>
+                  <div className="absolute left-[50%] top-0 bottom-0 border-r border-gray-200 border-dashed w-[1px]"></div>
+                  <div className="absolute left-[75%] top-0 bottom-0 border-r border-gray-200 border-dashed w-[1px]"></div>
+               </div>
+             ))}
           </div>
+
+          {/* Timeline Bars */}
           <div className="relative z-10">
             {tasks?.map((task) => {
               const left = getPos(task.start_date)
@@ -122,19 +150,23 @@ export default async function GanttPrintPage({
               const isMilestone = task.type === 'milestone';
 
               return (
-                <div key={task.id} className={`h-6 border-b border-gray-100 relative w-full ${isHeader ? 'bg-gray-100/50' : ''}`}>
+                <div 
+                  key={task.id} 
+                  className={`h-6 border-b border-gray-100 relative w-full ${isHeader ? 'bg-gray-100/50' : ''}`}
+                >
                   {isMilestone ? (
-                    // FIX: Separate the diamond div from the text div
+                    // Milestone
                     <>
                       <div className="absolute top-1 w-3 h-3 bg-black transform rotate-45" style={{ left: `${left}%`, marginLeft: '-6px' }}></div>
-                      {/* Text sits outside, not rotated */}
                       <div className="absolute top-0 left-0 text-[9px] font-bold hidden print:block whitespace-nowrap pl-2" style={{ left: `${left}%` }}>
                          {formatDate(task.start_date)}
                       </div>
                     </>
                   ) : isHeader ? (
+                    // Header Bar
                     <div className="absolute top-1.5 h-3 bg-gray-600 rounded-sm opacity-80" style={{ left: `${left}%`, width: `${width}%` }}></div>
                   ) : (
+                    // Standard Task Bar
                     <div className="absolute top-1.5 h-3 bg-blue-600 border border-blue-800" style={{ left: `${left}%`, width: `${width}%` }}>
                       <div className="h-full bg-blue-900" style={{ width: `${task.progress}%` }}></div>
                     </div>
@@ -161,7 +193,6 @@ export default async function GanttPrintPage({
           <div className="flex flex-col"><div className="bg-gray-100 border-b border-black text-center font-bold py-1">Approved</div><div className="flex-1"></div></div>
         </div>
       </div>
-      <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
     </div>
   )
 }
