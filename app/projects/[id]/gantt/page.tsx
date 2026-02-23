@@ -19,6 +19,7 @@ export default async function GanttPage({
   return (
     <div className="space-y-8">
       
+      {/* PDF Export */}
       <div className="flex justify-end">
         <a 
           href={`/print/gantt/${id}`} 
@@ -41,6 +42,16 @@ export default async function GanttPage({
             <input name="name" required placeholder="e.g. Kick-off Meeting" className="w-full border rounded p-2 text-sm" />
           </div>
           
+          {/* TYPE SELECTOR */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Type</label>
+            <select name="type" className="w-32 border rounded p-2 text-sm bg-white">
+              <option value="task">Standard Task</option>
+              <option value="project">HEADER / GROUP</option>
+              <option value="milestone">Milestone (◆)</option>
+            </select>
+          </div>
+          
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Start Date</label>
             <input name="start_date" type="date" required className="w-full border rounded p-2 text-sm" />
@@ -60,7 +71,7 @@ export default async function GanttPage({
       {/* 2. Visual Chart */}
       <GanttView tasks={tasks || []} projectId={id} />
 
-      {/* 3. Task Management List (Editable) */}
+      {/* 3. Task Management List */}
       <div className="bg-white rounded shadow border border-gray-200 overflow-hidden">
         <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
           <h3 className="text-sm font-bold text-gray-700 uppercase">Task Details (Edit / Delete)</h3>
@@ -71,6 +82,7 @@ export default async function GanttPage({
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task Name</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">End</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">%</th>
@@ -80,15 +92,23 @@ export default async function GanttPage({
             <tbody className="bg-white divide-y divide-gray-200">
               {tasks?.map((task) => (
                 <tr key={task.id}>
-                  {/* We wrap the row in a Form for updates */}
-                  <td colSpan={5} className="p-0">
-                    <form action={updateGanttTaskDetails} className="flex w-full">
+                  <td colSpan={6} className="p-0">
+                    <form action={updateGanttTaskDetails} className="flex w-full items-center">
                       <input type="hidden" name="task_id" value={task.id} />
                       <input type="hidden" name="project_id" value={id} />
 
                       {/* Name */}
                       <div className="p-2 w-1/3 min-w-[200px]">
-                        <input name="name" defaultValue={task.name} className="w-full text-sm border-gray-300 rounded p-1 focus:ring-blue-500 focus:border-blue-500" />
+                        <input name="name" defaultValue={task.name} className={`w-full text-sm border-gray-300 rounded p-1 focus:ring-blue-500 ${task.type === 'project' ? 'font-bold bg-gray-50' : ''}`} />
+                      </div>
+
+                      {/* Type Edit */}
+                      <div className="p-2 w-32">
+                        <select name="type" defaultValue={task.type || 'task'} className="w-full text-xs border-gray-300 rounded p-1 bg-white">
+                           <option value="task">Task</option>
+                           <option value="project">HEADER</option>
+                           <option value="milestone">Milestone</option>
+                        </select>
                       </div>
 
                       {/* Start Date */}
@@ -124,12 +144,7 @@ export default async function GanttPage({
                         <button type="submit" className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100" title="Save Changes">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                         </button>
-                        
-                        <button 
-                          formAction={deleteGanttTask} 
-                          className="p-1.5 bg-red-50 text-red-500 rounded hover:bg-red-100" 
-                          title="Delete Task"
-                        >
+                        <button formAction={deleteGanttTask} className="p-1.5 bg-red-50 text-red-500 rounded hover:bg-red-100" title="Delete Task">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-2.001-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                         </button>
                       </div>
