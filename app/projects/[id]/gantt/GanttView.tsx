@@ -3,8 +3,8 @@
 import { Gantt, Task, ViewMode } from 'gantt-task-react'
 import "gantt-task-react/dist/index.css"
 import { useState, useEffect } from 'react'
-import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
+import { updateGanttTaskDetails } from '@/app/actions' // Use Server Action now
 
 type Props = {
   tasks: any[]
@@ -12,18 +12,15 @@ type Props = {
 }
 
 export default function GanttView({ tasks: initialTasks, projectId }: Props) {
-  const supabase = createClient()
   const router = useRouter()
   
   const mapTasks = (data: any[]): Task[] => data.map(t => {
-    // VISUAL STYLING BASED ON TYPE
     let styles = { progressColor: '#2563eb', progressSelectedColor: '#1d4ed8', backgroundColor: '#3b82f6' }
     
+    // Headers are visually distinct
     if (t.type === 'project') {
-      // HEADER: Grey Bar
       styles = { progressColor: '#4b5563', progressSelectedColor: '#374151', backgroundColor: '#9ca3af' }
     } else if (t.type === 'milestone') {
-      // MILESTONE: Gold Bar (Visual library handles shape, but color helps)
       styles = { progressColor: '#d97706', progressSelectedColor: '#b45309', backgroundColor: '#f59e0b' }
     }
 
@@ -34,7 +31,7 @@ export default function GanttView({ tasks: initialTasks, projectId }: Props) {
       id: t.id,
       type: t.type || 'task', 
       progress: t.progress,
-      isDisabled: false,
+      isDisabled: t.type === 'project', // DISABLE DRAGGING FOR HEADERS (They are auto-calculated)
       styles: styles,
     }
   })
@@ -46,15 +43,27 @@ export default function GanttView({ tasks: initialTasks, projectId }: Props) {
   }, [initialTasks])
 
   const handleTaskChange = async (task: Task) => {
+    // 1. Optimistic UI update
     let newTasks = tasks.map(t => (t.id === task.id ? task : t))
     setTasks(newTasks)
 
-    await supabase.from('gantt_tasks').update({
-      start_date: task.start.toISOString(),
-      end_date: task.end.toISOString(),
-      progress: task.progress
-    }).eq('id', task.id)
+    // 2. Call Server Action to save + recalculate parents
+    const formData = new FormData()
+    formData.append('task_id', task.id)
+    formData.append('project_id', projectId)
+    formData.append('name', task.name)
+    formData.append('start_date', task.start.toISOString())
+    formData.append('end_date', task.end.toISOString())
+    formData.append('progress', task.progress.toString())
+    formData.append('type', task.type)
+    
+    // Find parent ID from original props if needed, or assume backend handles it if we don't send 'parent_id'
+    // Actually, we must preserve the parent_id. 
+    const originalTask = initialTasks.find(t => t.id === task.id)
+    if (originalTask) formData.append('parent_id', originalTask.parent_id || 'none')
 
+    await updateGanttTaskDetails(formData)
+    
     router.refresh()
   }
 

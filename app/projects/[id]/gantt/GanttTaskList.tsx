@@ -26,15 +26,13 @@ export default function GanttTaskList({ tasks: initialTasks, headers, projectId 
     const [reorderedItem] = items.splice(result.source.index, 1)
     items.splice(result.destination.index, 0, reorderedItem)
 
-    setTasks(items) // Optimistic update
+    setTasks(items)
 
-    // Prepare update payload
     const updates = items.map((task, index) => ({
       id: task.id,
       order_index: index
     }))
 
-    // Save to server
     await reorderGanttTasks(updates)
     router.refresh()
   }
@@ -49,7 +47,7 @@ export default function GanttTaskList({ tasks: initialTasks, headers, projectId 
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-2 py-3 w-10"></th> {/* Drag Handle */}
+              <th className="px-2 py-3 w-10"></th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task Name</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type / Group</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start</th>
@@ -63,15 +61,16 @@ export default function GanttTaskList({ tasks: initialTasks, headers, projectId 
             <Droppable droppableId="tasks">
               {(provided) => (
                 <tbody className="bg-white divide-y divide-gray-200" {...provided.droppableProps} ref={provided.innerRef}>
-                  {tasks.map((task, index) => (
+                  {tasks.map((task, index) => {
+                    const isHeader = task.type === 'project';
+                    return (
                     <Draggable key={task.id} draggableId={task.id} index={index}>
                       {(provided) => (
                         <tr 
                           ref={provided.innerRef}
                           {...provided.draggableProps}
-                          className={task.type === 'project' ? 'bg-gray-50' : 'bg-white'}
+                          className={isHeader ? 'bg-gray-100 font-bold' : 'bg-white'}
                         >
-                          {/* Drag Handle */}
                           <td className="p-2 text-center" {...provided.dragHandleProps}>
                             <div className="cursor-grab text-gray-400 hover:text-gray-600">
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8h16M4 16h16"></path></svg>
@@ -86,7 +85,7 @@ export default function GanttTaskList({ tasks: initialTasks, headers, projectId 
                               {/* Name */}
                               <div className="p-2 w-1/3 min-w-[200px] flex items-center">
                                 {task.parent_id && <span className="text-gray-300 mr-2">↳</span>}
-                                <input name="name" defaultValue={task.name} className={`w-full text-sm border-gray-300 rounded p-1 focus:ring-blue-500 ${task.type === 'project' ? 'font-bold' : ''}`} />
+                                <input name="name" defaultValue={task.name} className={`w-full text-sm border-gray-300 rounded p-1 focus:ring-blue-500 ${isHeader ? 'font-bold bg-transparent' : ''}`} />
                               </div>
 
                               {/* Type & Parent */}
@@ -104,25 +103,44 @@ export default function GanttTaskList({ tasks: initialTasks, headers, projectId 
                                 </select>
                               </div>
 
-                              {/* Start/End/Progress */}
-                              <div className="p-2 w-32"><input name="start_date" type="date" defaultValue={new Date(task.start_date).toISOString().split('T')[0]} className="w-full text-sm border-gray-300 rounded p-1"/></div>
-                              <div className="p-2 w-32"><input name="end_date" type="date" defaultValue={new Date(task.end_date).toISOString().split('T')[0]} className="w-full text-sm border-gray-300 rounded p-1"/></div>
-                              <div className="p-2 w-20 flex items-center"><input name="progress" type="number" min="0" max="100" defaultValue={task.progress} className="w-full text-sm border-gray-300 rounded p-1 text-center"/><span className="ml-1 text-xs text-gray-500">%</span></div>
+                              {/* Dates & Progress - READ ONLY IF HEADER */}
+                              <div className="p-2 w-32">
+                                <input 
+                                  name="start_date" type="date" 
+                                  defaultValue={new Date(task.start_date).toISOString().split('T')[0]} 
+                                  readOnly={isHeader}
+                                  className={`w-full text-sm border-gray-300 rounded p-1 ${isHeader ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : ''}`}
+                                />
+                              </div>
+                              <div className="p-2 w-32">
+                                <input 
+                                  name="end_date" type="date" 
+                                  defaultValue={new Date(task.end_date).toISOString().split('T')[0]} 
+                                  readOnly={isHeader}
+                                  className={`w-full text-sm border-gray-300 rounded p-1 ${isHeader ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : ''}`}
+                                />
+                              </div>
+                              <div className="p-2 w-20 flex items-center">
+                                <input 
+                                  name="progress" type="number" min="0" max="100" 
+                                  defaultValue={task.progress} 
+                                  readOnly={isHeader}
+                                  className={`w-full text-sm border-gray-300 rounded p-1 text-center ${isHeader ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : ''}`} 
+                                />
+                                <span className="ml-1 text-xs text-gray-500">%</span>
+                              </div>
 
-                              {/* ACTIONS: Tick | Move | Delete */}
+                              {/* ACTIONS */}
                               <div className="p-2 flex-1 flex items-center justify-center gap-2">
-                                {/* Save (Tick) */}
                                 <button type="submit" className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100" title="Save">
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                                 </button>
                                 
-                                {/* Manual Move Arrows (for precise group moving) */}
                                 <div className="flex flex-col">
                                    <button formAction={async (fd) => { fd.append('direction', 'up'); fd.append('current_order', task.order_index); await moveGanttTask(fd); router.refresh(); }} className="text-gray-400 hover:text-black text-[8px] leading-none">▲</button>
                                    <button formAction={async (fd) => { fd.append('direction', 'down'); fd.append('current_order', task.order_index); await moveGanttTask(fd); router.refresh(); }} className="text-gray-400 hover:text-black text-[8px] leading-none">▼</button>
                                 </div>
 
-                                {/* Delete */}
                                 <button formAction={async (fd) => { await deleteGanttTask(fd); router.refresh(); }} className="p-1.5 bg-red-50 text-red-500 rounded hover:bg-red-100" title="Delete">
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-2.001-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                 </button>
@@ -132,7 +150,7 @@ export default function GanttTaskList({ tasks: initialTasks, headers, projectId 
                         </tr>
                       )}
                     </Draggable>
-                  ))}
+                  )})}
                   {provided.placeholder}
                 </tbody>
               )}

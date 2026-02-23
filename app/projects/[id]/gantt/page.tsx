@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
-import { addGanttTask } from '@/app/actions'
+import { addGanttTask, updateGanttTaskDetails, deleteGanttTask, moveGanttTask } from '@/app/actions'
 import GanttView from './GanttView'
-import GanttTaskList from './GanttTaskList' // NEW Component
+import GanttTaskList from './GanttTaskList'
 
 export default async function GanttPage({
   params,
@@ -85,7 +85,7 @@ export default async function GanttPage({
       {/* 2. Visual Chart */}
       <GanttView tasks={tasks || []} projectId={id} />
 
-      {/* 3. Task Management List (Draggable) */}
+      {/* 3. Task Management List */}
       <GanttTaskList 
         tasks={tasks || []} 
         headers={headers} 
