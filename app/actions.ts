@@ -321,7 +321,7 @@ export async function deleteControlPlanRow(formData: FormData) {
 }
 
 // ==========================================
-// 5. GANTT CHART ACTIONS (UPDATED FOR HEADERS)
+// 5. GANTT CHART ACTIONS
 // ==========================================
 
 export async function addGanttTask(formData: FormData) {
@@ -331,7 +331,19 @@ export async function addGanttTask(formData: FormData) {
   const name = formData.get('name') as string
   const start = formData.get('start_date') as string
   const end = formData.get('end_date') as string
-  const type = formData.get('type') as string // 'task', 'milestone', 'project'
+  const type = formData.get('type') as string
+  const parentId = formData.get('parent_id') as string // NEW: Grouping
+
+  // 1. Find the max order_index to put this at the bottom
+  const { data: maxOrder } = await supabase
+    .from('gantt_tasks')
+    .select('order_index')
+    .eq('project_id', projectId)
+    .order('order_index', { ascending: false })
+    .limit(1)
+    .single()
+
+  const nextOrder = (maxOrder?.order_index || 0) + 1
 
   await supabase.from('gantt_tasks').insert({
     project_id: projectId,
@@ -339,8 +351,38 @@ export async function addGanttTask(formData: FormData) {
     start_date: new Date(start).toISOString(),
     end_date: new Date(end).toISOString(),
     progress: 0,
-    type: type || 'task'
+    type: type || 'task',
+    parent_id: parentId === 'none' ? null : parentId,
+    order_index: nextOrder
   })
+
+  revalidatePath(`/projects/${projectId}/gantt`)
+}
+
+// NEW: Function to Move Tasks Up/Down
+export async function moveGanttTask(formData: FormData) {
+  const supabase = await createClient()
+  const taskId = formData.get('task_id') as string
+  const direction = formData.get('direction') as string // 'up' or 'down'
+  const projectId = formData.get('project_id') as string
+  const currentOrder = parseInt(formData.get('current_order') as string)
+
+  // Find the neighbor to swap with
+  let neighborQuery = supabase.from('gantt_tasks').select('id, order_index').eq('project_id', projectId)
+
+  if (direction === 'up') {
+    neighborQuery = neighborQuery.lt('order_index', currentOrder).order('order_index', { ascending: false }).limit(1)
+  } else {
+    neighborQuery = neighborQuery.gt('order_index', currentOrder).order('order_index', { ascending: true }).limit(1)
+  }
+
+  const { data: neighbor } = await neighborQuery.single()
+
+  if (neighbor) {
+    // Swap indexes
+    await supabase.from('gantt_tasks').update({ order_index: neighbor.order_index }).eq('id', taskId)
+    await supabase.from('gantt_tasks').update({ order_index: currentOrder }).eq('id', neighbor.id)
+  }
 
   revalidatePath(`/projects/${projectId}/gantt`)
 }
@@ -354,14 +396,16 @@ export async function updateGanttTaskDetails(formData: FormData) {
   const start = formData.get('start_date') as string
   const end = formData.get('end_date') as string
   const progress = formData.get('progress') as string
-  const type = formData.get('type') as string // 'task', 'milestone', 'project'
+  const type = formData.get('type') as string
+  const parentId = formData.get('parent_id') as string
 
   const { error } = await supabase.from('gantt_tasks').update({
     name,
     start_date: new Date(start).toISOString(),
     end_date: new Date(end).toISOString(),
     progress: parseInt(progress),
-    type: type
+    type: type,
+    parent_id: parentId === 'none' ? null : parentId
   }).eq('id', id)
 
   if (error) console.error('Error updating task:', error)
