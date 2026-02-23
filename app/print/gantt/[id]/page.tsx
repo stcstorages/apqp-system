@@ -1,7 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import CustomerLogo from '@/app/components/CustomerLogo'
 
-// Format Date Helper
 const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
@@ -18,9 +17,14 @@ export default async function GanttPrintPage({
   const supabase = await createClient()
 
   const { data: project } = await supabase.from('projects').select('*').eq('id', id).single()
-  const { data: tasks } = await supabase.from('gantt_tasks').select('*').eq('project_id', id).order('start_date', { ascending: true })
+  
+  // CHANGED: Sort by 'order_index' to match user's custom order
+  const { data: tasks } = await supabase
+    .from('gantt_tasks')
+    .select('*')
+    .eq('project_id', id)
+    .order('order_index', { ascending: true })
 
-  // Calculate Timeline Bounds
   let minDate = new Date()
   let maxDate = new Date()
   if (tasks && tasks.length > 0) {
@@ -37,7 +41,6 @@ export default async function GanttPrintPage({
   maxDate = new Date(maxDate.getFullYear(), maxDate.getMonth() + 6, 0)
   const totalDuration = maxDate.getTime() - minDate.getTime()
 
-  // Generate Months
   const months = []
   const tempDate = new Date(minDate)
   while (tempDate < maxDate) {
@@ -59,7 +62,7 @@ export default async function GanttPrintPage({
         }
       `}</style>
 
-      {/* HEADER WITH LOGO */}
+      {/* HEADER */}
       <div className="flex justify-between items-center mb-2">
          <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
          <CustomerLogo customer={project.customer} />
@@ -75,7 +78,7 @@ export default async function GanttPrintPage({
         </div>
       </div>
 
-      {/* MAIN CONTENT SPLIT */}
+      {/* CONTENT */}
       <div className="flex border border-black">
         {/* LEFT: DATA TABLE */}
         <div className="w-[300px] flex-shrink-0 border-r border-black flex flex-col">
@@ -86,10 +89,13 @@ export default async function GanttPrintPage({
           </div>
           {tasks?.map((task, index) => {
             const isHeader = task.type === 'project';
+            const isChild = !!task.parent_id;
             return (
               <div key={task.id} className={`h-6 border-b border-gray-200 flex items-center px-1 ${isHeader ? 'bg-gray-100 font-bold' : 'bg-white'}`}>
                 <div className="w-8 text-center border-r border-gray-200">{index + 1}</div>
-                <div className="flex-1 px-2 border-r border-gray-200 truncate">{task.name}</div>
+                <div className={`flex-1 px-2 border-r border-gray-200 truncate ${isChild ? 'pl-4' : ''}`}>
+                   {isChild && '↳ '} {task.name}
+                </div>
                 <div className="w-16 text-center">{isHeader ? '' : `${getDuration(task.start_date, task.end_date)} days`}</div>
               </div>
             )
@@ -118,9 +124,14 @@ export default async function GanttPrintPage({
               return (
                 <div key={task.id} className={`h-6 border-b border-gray-100 relative w-full ${isHeader ? 'bg-gray-100/50' : ''}`}>
                   {isMilestone ? (
-                    <div className="absolute top-1 w-3 h-3 bg-black transform rotate-45" style={{ left: `${left}%`, marginLeft: '-6px' }}>
-                       <div className="absolute -top-4 left-0 w-20 text-[8px] font-bold hidden print:block">{formatDate(task.start_date)}</div>
-                    </div>
+                    // FIX: Separate the diamond div from the text div
+                    <>
+                      <div className="absolute top-1 w-3 h-3 bg-black transform rotate-45" style={{ left: `${left}%`, marginLeft: '-6px' }}></div>
+                      {/* Text sits outside, not rotated */}
+                      <div className="absolute top-0 left-0 text-[9px] font-bold hidden print:block whitespace-nowrap pl-2" style={{ left: `${left}%` }}>
+                         {formatDate(task.start_date)}
+                      </div>
+                    </>
                   ) : isHeader ? (
                     <div className="absolute top-1.5 h-3 bg-gray-600 rounded-sm opacity-80" style={{ left: `${left}%`, width: `${width}%` }}></div>
                   ) : (
