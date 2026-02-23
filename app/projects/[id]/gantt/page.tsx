@@ -1,5 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
-import { addGanttTask, updateGanttTaskDetails, deleteGanttTask } from '@/app/actions'
+import { addGanttTask, updateGanttTaskDetails, deleteGanttTask, moveGanttTask } from '@/app/actions'
 import GanttView from './GanttView'
 
 export default async function GanttPage({
@@ -10,16 +10,19 @@ export default async function GanttPage({
   const { id } = await params
   const supabase = await createClient()
 
+  // 1. Fetch tasks sorted by ORDER INDEX (Manual Sort), not date
   const { data: tasks } = await supabase
     .from('gantt_tasks')
     .select('*')
     .eq('project_id', id)
-    .order('start_date', { ascending: true })
+    .order('order_index', { ascending: true })
+
+  // Filter out headers to use in the "Group Under" dropdown
+  const headers = tasks?.filter((t) => t.type === 'project') || []
 
   return (
     <div className="space-y-8">
       
-      {/* PDF Export */}
       <div className="flex justify-end">
         <a 
           href={`/print/gantt/${id}`} 
@@ -51,6 +54,17 @@ export default async function GanttPage({
               <option value="milestone">Milestone (◆)</option>
             </select>
           </div>
+
+          {/* PARENT SELECTOR (Grouping) */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Group Under</label>
+            <select name="parent_id" className="w-40 border rounded p-2 text-sm bg-white">
+              <option value="none">-- None (Root) --</option>
+              {headers.map(h => (
+                <option key={h.id} value={h.id}>{h.name}</option>
+              ))}
+            </select>
+          </div>
           
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Start Date</label>
@@ -74,15 +88,16 @@ export default async function GanttPage({
       {/* 3. Task Management List */}
       <div className="bg-white rounded shadow border border-gray-200 overflow-hidden">
         <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <h3 className="text-sm font-bold text-gray-700 uppercase">Task Details (Edit / Delete)</h3>
+          <h3 className="text-sm font-bold text-gray-700 uppercase">Task Details (Edit / Reorder)</h3>
         </div>
         
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase w-16">Sort</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task Name</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type / Group</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">End</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">%</th>
@@ -91,23 +106,52 @@ export default async function GanttPage({
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {tasks?.map((task) => (
-                <tr key={task.id}>
+                <tr key={task.id} className={task.type === 'project' ? 'bg-gray-50' : ''}>
+                  
+                  {/* SORT BUTTONS */}
+                  <td className="p-2 text-center">
+                    <div className="flex flex-col items-center">
+                      <form action={moveGanttTask}>
+                        <input type="hidden" name="task_id" value={task.id} />
+                        <input type="hidden" name="project_id" value={id} />
+                        <input type="hidden" name="current_order" value={task.order_index} />
+                        <input type="hidden" name="direction" value="up" />
+                        <button className="text-gray-400 hover:text-blue-600 text-[10px]">▲</button>
+                      </form>
+                      <form action={moveGanttTask}>
+                        <input type="hidden" name="task_id" value={task.id} />
+                        <input type="hidden" name="project_id" value={id} />
+                        <input type="hidden" name="current_order" value={task.order_index} />
+                        <input type="hidden" name="direction" value="down" />
+                        <button className="text-gray-400 hover:text-blue-600 text-[10px]">▼</button>
+                      </form>
+                    </div>
+                  </td>
+
                   <td colSpan={6} className="p-0">
                     <form action={updateGanttTaskDetails} className="flex w-full items-center">
                       <input type="hidden" name="task_id" value={task.id} />
                       <input type="hidden" name="project_id" value={id} />
 
-                      {/* Name */}
-                      <div className="p-2 w-1/3 min-w-[200px]">
-                        <input name="name" defaultValue={task.name} className={`w-full text-sm border-gray-300 rounded p-1 focus:ring-blue-500 ${task.type === 'project' ? 'font-bold bg-gray-50' : ''}`} />
+                      {/* Name - Indented if it's a child */}
+                      <div className="p-2 w-1/3 min-w-[200px] flex items-center">
+                        {task.parent_id && <span className="text-gray-300 mr-2">↳</span>}
+                        <input name="name" defaultValue={task.name} className={`w-full text-sm border-gray-300 rounded p-1 focus:ring-blue-500 ${task.type === 'project' ? 'font-bold' : ''}`} />
                       </div>
 
-                      {/* Type Edit */}
-                      <div className="p-2 w-32">
-                        <select name="type" defaultValue={task.type || 'task'} className="w-full text-xs border-gray-300 rounded p-1 bg-white">
+                      {/* Type & Parent Edit */}
+                      <div className="p-2 w-48 flex gap-1">
+                        <select name="type" defaultValue={task.type || 'task'} className="w-1/2 text-xs border-gray-300 rounded p-1 bg-white">
                            <option value="task">Task</option>
                            <option value="project">HEADER</option>
-                           <option value="milestone">Milestone</option>
+                           <option value="milestone">Mile</option>
+                        </select>
+                        <select name="parent_id" defaultValue={task.parent_id || 'none'} className="w-1/2 text-xs border-gray-300 rounded p-1 bg-white text-gray-500">
+                           <option value="none">Root</option>
+                           {headers.map(h => (
+                             // Don't let a header select itself as parent
+                             h.id !== task.id && <option key={h.id} value={h.id}>{h.name.substring(0, 10)}...</option>
+                           ))}
                         </select>
                       </div>
 
