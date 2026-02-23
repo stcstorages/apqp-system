@@ -4,7 +4,7 @@ import { Gantt, Task, ViewMode } from 'gantt-task-react'
 import "gantt-task-react/dist/index.css"
 import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { useRouter } from 'next/navigation' // Import Router
+import { useRouter } from 'next/navigation'
 
 type Props = {
   tasks: any[]
@@ -13,39 +13,48 @@ type Props = {
 
 export default function GanttView({ tasks: initialTasks, projectId }: Props) {
   const supabase = createClient()
-  const router = useRouter() // Initialize Router
+  const router = useRouter()
   
-  const mapTasks = (data: any[]): Task[] => data.map(t => ({
-    start: new Date(t.start_date),
-    end: new Date(t.end_date),
-    name: t.name,
-    id: t.id,
-    type: 'task',
-    progress: t.progress,
-    isDisabled: false,
-    styles: { progressColor: '#2563eb', progressSelectedColor: '#1d4ed8' }
-  }))
+  const mapTasks = (data: any[]): Task[] => data.map(t => {
+    // VISUAL STYLING BASED ON TYPE
+    let styles = { progressColor: '#2563eb', progressSelectedColor: '#1d4ed8', backgroundColor: '#3b82f6' }
+    
+    if (t.type === 'project') {
+      // HEADER: Grey Bar
+      styles = { progressColor: '#4b5563', progressSelectedColor: '#374151', backgroundColor: '#9ca3af' }
+    } else if (t.type === 'milestone') {
+      // MILESTONE: Gold Bar (Visual library handles shape, but color helps)
+      styles = { progressColor: '#d97706', progressSelectedColor: '#b45309', backgroundColor: '#f59e0b' }
+    }
+
+    return {
+      start: new Date(t.start_date),
+      end: new Date(t.end_date),
+      name: t.name,
+      id: t.id,
+      type: t.type || 'task', 
+      progress: t.progress,
+      isDisabled: false,
+      styles: styles,
+    }
+  })
 
   const [tasks, setTasks] = useState<Task[]>(mapTasks(initialTasks))
 
-  // Sync state if props change (e.g. after manual edit in table)
   useEffect(() => {
     setTasks(mapTasks(initialTasks))
   }, [initialTasks])
 
   const handleTaskChange = async (task: Task) => {
-    // 1. Update UI locally
     let newTasks = tasks.map(t => (t.id === task.id ? task : t))
     setTasks(newTasks)
 
-    // 2. Save to Database
     await supabase.from('gantt_tasks').update({
       start_date: task.start.toISOString(),
       end_date: task.end.toISOString(),
       progress: task.progress
     }).eq('id', task.id)
 
-    // 3. Refresh the page so the Table below updates too
     router.refresh()
   }
 
