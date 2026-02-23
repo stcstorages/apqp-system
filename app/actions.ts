@@ -14,7 +14,7 @@ export async function createProject(formData: FormData) {
 
   if (!user) { redirect('/login') }
 
-  // Get Form Data based on your new requirements
+  // Get Form Data based on new requirements
   const name = formData.get('name') as string // Project Name
   const model = formData.get('model') as string
   const part_name = formData.get('part_name') as string
@@ -27,7 +27,7 @@ export async function createProject(formData: FormData) {
     model,
     part_name,
     part_number,
-    product_type, // Storing Category here
+    product_type,
     customer,
     owner_id: user.id,
     status: 'draft'
@@ -42,53 +42,54 @@ export async function updateProjectDetails(formData: FormData) {
   const supabase = await createClient()
   const projectId = formData.get('project_id') as string
   
-  // 1. General Info
+  // Basic Info
   const name = formData.get('name') as string
   const part_number = formData.get('part_number') as string
   const customer = formData.get('customer') as string
-  const model = formData.get('model') as string // NEW
-  const drawing_number = formData.get('drawing_number') as string // NEW
+  const model = formData.get('model') as string
+  const drawing_number = formData.get('drawing_number') as string
 
-  // 2. Process Flow Doc Control
+  // Document Control Info
+  const cp_number = formData.get('cp_number') as string
+  const key_contact = formData.get('key_contact') as string
+  const core_team = formData.get('core_team') as string
+  const cp_phase = formData.get('cp_phase') as string
+  
+  // Specific Doc Control
   const flow_phase = formData.get('flow_phase') as string
   const flow_number = formData.get('flow_number') as string
   const flow_date_orig = formData.get('flow_date_orig') as string || null
   const flow_date_rev = formData.get('flow_date_rev') as string || null
 
-  // 3. PFMEA Doc Control
   const pfmea_phase = formData.get('pfmea_phase') as string
   const pfmea_number = formData.get('pfmea_number') as string
   const pfmea_date_orig = formData.get('pfmea_date_orig') as string || null
   const pfmea_date_rev = formData.get('pfmea_date_rev') as string || null
 
-  // 4. Control Plan Doc Control
-  const cp_phase = formData.get('cp_phase') as string
-  const cp_number = formData.get('cp_number') as string
   const cp_date_orig = formData.get('cp_date_orig') as string || null
   const cp_date_rev = formData.get('cp_date_rev') as string || null
 
-  // 5. Shared/General Team Info
-  const key_contact = formData.get('key_contact') as string
-  const core_team = formData.get('core_team') as string
+  // Approvals
   const customer_eng_approval = formData.get('customer_eng_approval') as string || null
   const customer_quality_approval = formData.get('customer_quality_approval') as string || null
   const other_approval = formData.get('other_approval') as string || null
 
   const { error } = await supabase.from('projects').update({
     name, part_number, customer, model, drawing_number,
+    cp_number, key_contact, core_team, cp_phase,
     flow_phase, flow_number, flow_date_orig, flow_date_rev,
     pfmea_phase, pfmea_number, pfmea_date_orig, pfmea_date_rev,
-    cp_phase, cp_number, cp_date_orig, cp_date_rev,
-    key_contact, core_team,
+    cp_date_orig, cp_date_rev,
     customer_eng_approval, customer_quality_approval, other_approval
   }).eq('id', projectId)
 
   if (error) console.error('Error updating project details:', error)
 
   revalidatePath(`/projects/${projectId}`)
-  revalidatePath(`/projects/${projectId}/process-flow`)
   revalidatePath(`/projects/${projectId}/fmea`)
   revalidatePath(`/projects/${projectId}/control-plan`)
+  revalidatePath(`/projects/${projectId}/process-flow`)
+  revalidatePath(`/projects/${projectId}/gantt`)
 }
 
 export async function signOut() {
@@ -108,7 +109,6 @@ export async function addProcessStep(formData: FormData) {
   const stepNumber = formData.get('step_number') as string
   const description = formData.get('description') as string
   const symbolType = formData.get('symbol_type') as string
-  
   const remarks = formData.get('remarks') as string
   const specialCharId = formData.get('special_char_id') as string || null
   const machineTools = formData.get('machine_tools') as string || null
@@ -321,7 +321,7 @@ export async function deleteControlPlanRow(formData: FormData) {
 }
 
 // ==========================================
-// 5. GANTT CHART ACTIONS
+// 5. GANTT CHART ACTIONS (UPDATED FOR HEADERS)
 // ==========================================
 
 export async function addGanttTask(formData: FormData) {
@@ -331,6 +331,7 @@ export async function addGanttTask(formData: FormData) {
   const name = formData.get('name') as string
   const start = formData.get('start_date') as string
   const end = formData.get('end_date') as string
+  const type = formData.get('type') as string // 'task', 'milestone', 'project'
 
   await supabase.from('gantt_tasks').insert({
     project_id: projectId,
@@ -338,7 +339,7 @@ export async function addGanttTask(formData: FormData) {
     start_date: new Date(start).toISOString(),
     end_date: new Date(end).toISOString(),
     progress: 0,
-    type: 'task'
+    type: type || 'task'
   })
 
   revalidatePath(`/projects/${projectId}/gantt`)
@@ -353,12 +354,14 @@ export async function updateGanttTaskDetails(formData: FormData) {
   const start = formData.get('start_date') as string
   const end = formData.get('end_date') as string
   const progress = formData.get('progress') as string
+  const type = formData.get('type') as string // 'task', 'milestone', 'project'
 
   const { error } = await supabase.from('gantt_tasks').update({
     name,
     start_date: new Date(start).toISOString(),
     end_date: new Date(end).toISOString(),
-    progress: parseInt(progress)
+    progress: parseInt(progress),
+    type: type
   }).eq('id', id)
 
   if (error) console.error('Error updating task:', error)
