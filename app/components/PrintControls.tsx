@@ -1,14 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 export default function PrintControls() {
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape')
-
-  // Auto-print when page loads (optional, removing it allows user to choose orientation first)
-  useEffect(() => {
-    // window.print() // Uncomment if you want immediate print dialog
-  }, [])
 
   const handlePrint = () => {
     window.print()
@@ -16,17 +11,19 @@ export default function PrintControls() {
 
   return (
     <>
-      {/* Dynamic Style Injection */}
-      <style jsx global>{`
+      {/* 
+          Dynamic Style Injection 
+          We use dangerouslySetInnerHTML to avoid TypeScript errors with 'jsx' attributes
+      */}
+      <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           @page { size: ${orientation}; margin: 5mm; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .print:hidden { display: none; }
           .no-break { break-inside: avoid; }
         }
-      `}</style>
+      `}} />
 
-      {/* Control Panel (Hidden when printing) */}
+      {/* Control Panel (Hidden when printing via Tailwind 'print:hidden' class) */}
       <div className="fixed top-4 right-4 bg-gray-800 text-white p-3 rounded shadow-lg flex items-center gap-4 z-50 print:hidden">
         <div className="flex flex-col">
           <label className="text-[10px] uppercase font-bold text-gray-400">Orientation</label>
