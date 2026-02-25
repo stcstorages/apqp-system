@@ -133,7 +133,7 @@ export default async function GanttPrintPage({
                return (
                  <div 
                     key={task.id} 
-                    /* REDUCED HEIGHT: h-6 instead of h-8 */
+                    /* TIGHT ROW HEIGHT: h-6 (24px) */
                     className={`h-6 flex items-center px-2 border-b border-gray-50 ${isHeader ? 'bg-gray-100 font-bold text-gray-800' : 'text-gray-600'}`}
                  >
                     <div className={`w-1 h-3 rounded-full mr-2 ${isHeader ? 'bg-gray-400' : colorTheme.bar}`}></div>
@@ -185,7 +185,7 @@ export default async function GanttPrintPage({
           </div>
 
           {/* Bars Layer */}
-          <div className="relative z-10">
+          <div className="relative z-10 pt-[2px]">
              {(() => {
                 currentGroupIndex = 0
                 return tasks?.map((task) => {
@@ -198,10 +198,10 @@ export default async function GanttPrintPage({
                    const width = getWidth(task.start_date, task.end_date)
                    
                    return (
-                     /* REDUCED ROW HEIGHT: h-6 */
+                     /* TIGHT ROW: h-6 */
                      <div key={task.id} className={`h-6 relative w-full ${isHeader ? 'border-b border-gray-100/50' : ''}`}>
                         
-                        {/* Header Bar */}
+                        {/* Header Bar: THICK (h-4) */}
                         {isHeader && (
                           <div 
                             className="absolute top-1 h-4 bg-gray-200/50 rounded-r-md border-l-4 border-gray-500"
@@ -229,11 +229,11 @@ export default async function GanttPrintPage({
                           </>
                         )}
 
-                        {/* Standard Task Bar (Pill) - REDUCED HEIGHT: h-3 */}
+                        {/* Task Bar: THICKER (h-4) and centered via top-1 */}
                         {!isHeader && !isMilestone && (
                           <>
                             <div 
-                              className={`absolute top-1.5 h-3 rounded-full shadow-sm flex items-center overflow-hidden ${colorTheme.bar} bg-opacity-30 border ${colorTheme.border}`}
+                              className={`absolute top-1 h-4 rounded-full shadow-sm flex items-center overflow-hidden ${colorTheme.bar} bg-opacity-30 border ${colorTheme.border}`}
                               style={{ left: `${left}%`, width: `${Math.max(width, 0.5)}%` }}
                             >
                                <div className={`h-full ${colorTheme.bar}`} style={{ width: `${task.progress}%` }}></div>
@@ -241,11 +241,9 @@ export default async function GanttPrintPage({
                             
                             {/* Label Next to Bar */}
                             <div 
-                              className="absolute top-1.5 text-[8px] text-gray-500 whitespace-nowrap flex items-center gap-1"
+                              className="absolute top-1 text-[8px] text-gray-500 whitespace-nowrap flex items-center gap-1"
                               style={{ left: `calc(${left}% + ${Math.max(width, 0.5)}% + 4px)` }}
                             >
-                               {/* Only show name if bar is very small, otherwise name is usually obvious from left column */}
-                               {/* <span className="font-medium">{task.name}</span> */} 
                                <span className="text-gray-400">{task.progress}%</span>
                             </div>
                           </>
