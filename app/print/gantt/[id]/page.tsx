@@ -39,18 +39,15 @@ export default async function GanttPrintPage({
     .eq('project_id', id)
     .order('order_index', { ascending: true })
 
-  // --- LOGIC FIX: DYNAMICALLY RECALCULATE HEADERS FOR PRINT ---
+  // --- 1. DYNAMICALLY RECALCULATE HEADERS ---
   const processedTasks = rawTasks?.map(t => ({ ...t })) || []
   
   if (processedTasks.length > 0) {
-    // 1. Identify Headers (FIXED: Added type annotation : number[])
     const headerIndices: number[] = []
     processedTasks.forEach((t, i) => { if (t.type === 'project') headerIndices.push(i) })
 
-    // 2. Loop through headers and calculate bounds based on children
     headerIndices.forEach((headerIndex, i) => {
       const nextHeaderIndex = headerIndices[i + 1] || processedTasks.length
-      // Get all tasks between this header and the next header
       const children = processedTasks.slice(headerIndex + 1, nextHeaderIndex)
       
       if (children.length > 0) {
@@ -64,14 +61,13 @@ export default async function GanttPrintPage({
             if (e > maxEnd) maxEnd = e
          })
          
-         // Override the Header's dates with calculated ones
          processedTasks[headerIndex].start_date = new Date(minStart).toISOString()
          processedTasks[headerIndex].end_date = new Date(maxEnd).toISOString()
       }
     })
   }
 
-  // 1. Calculate Timeline Bounds (Global)
+  // --- 2. CALCULATE TIMELINE BOUNDS ---
   let minDate = new Date()
   let maxDate = new Date()
   
@@ -87,15 +83,16 @@ export default async function GanttPrintPage({
     })
   }
 
-  // Add buffer
+  // Add buffer: Start 1 week before, End 3 weeks after
   minDate.setDate(minDate.getDate() - 7)
-  maxDate.setDate(maxDate.getDate() + 14)
+  maxDate.setDate(maxDate.getDate() + 21)
 
   const totalDuration = maxDate.getTime() - minDate.getTime()
 
-  // 2. Generate Week Columns
+  // --- 3. GENERATE WEEK COLUMNS ---
   const weeks = []
   const tempDate = new Date(minDate)
+  // Align to Monday
   const day = tempDate.getDay() || 7
   if (day !== 1) tempDate.setHours(-24 * (day - 1))
 
@@ -104,23 +101,28 @@ export default async function GanttPrintPage({
     tempDate.setDate(tempDate.getDate() + 7)
   }
 
+  // Positioning Helpers
+  // Fix: Add 1 day (86400000ms) to width so bars cover the end date fully (Inclusive)
   const getPos = (dateStr: string) => ((new Date(dateStr).getTime() - minDate.getTime()) / totalDuration) * 100
-  const getWidth = (startStr: string, endStr: string) => ((new Date(endStr).getTime() - new Date(startStr).getTime()) / totalDuration) * 100
+  const getWidth = (startStr: string, endStr: string) => {
+      const durationMs = new Date(endStr).getTime() - new Date(startStr).getTime()
+      // Add 1 day buffer for visibility unless it's a 0-day milestone
+      const adjustedDuration = durationMs === 0 ? 0 : durationMs + 86400000 
+      return (adjustedDuration / totalDuration) * 100
+  }
   
   let currentGroupIndex = 0
   let currentParentId = null
 
   return (
-    <div className="min-h-screen bg-white text-gray-800 text-[9px] font-sans">
+    <div className="min-h-screen bg-white text-gray-800 text-[10px] font-sans">
       
-      {/* 1. PRINT CONTROLS */}
+      {/* PRINT CONTROLS */}
       <PrintControls />
 
-      {/* Local Styles */}
       <style>{`
         @media print { 
           .no-break { break-inside: avoid; } 
-          /* Remove default table borders */
           table, td, th { border: none !important; }
         }
       `}</style>
@@ -165,7 +167,6 @@ export default async function GanttPrintPage({
                return (
                  <div 
                     key={task.id} 
-                    /* TIGHTER ROW HEIGHT: h-5 (20px) */
                     className={`h-5 flex items-center px-2 border-b border-gray-50 ${isHeader ? 'bg-gray-100 font-bold text-gray-800' : 'text-gray-600'}`}
                  >
                     <div className={`w-1 h-3 rounded-full mr-2 ${isHeader ? 'bg-gray-400' : colorTheme.bar}`}></div>
@@ -184,7 +185,7 @@ export default async function GanttPrintPage({
         {/* RIGHT SIDE: TIMELINE */}
         <div className="flex-1 relative overflow-hidden bg-white">
           
-          {/* Timeline Header (Reduced Height: h-6) */}
+          {/* Timeline Header */}
           <div className="h-6 bg-gray-50 border-b border-gray-200 relative whitespace-nowrap overflow-hidden">
             {weeks.map((w, i) => {
               const left = getPos(w.toISOString())
@@ -230,16 +231,15 @@ export default async function GanttPrintPage({
                    const width = getWidth(task.start_date, task.end_date)
                    
                    return (
-                     /* TIGHTER ROW: h-5 */
                      <div key={task.id} className={`h-5 relative w-full ${isHeader ? 'border-b border-gray-100/50' : ''}`}>
                         
-                        {/* Header Bar: h-2.5 (Thinner to fit row) */}
+                        {/* Header Bar: FIXED WIDTH (No +80px) */}
                         {isHeader && (
-                          <div 
-                            className="absolute top-1.5 h-2.5 bg-gray-200/50 rounded-r-md border-l-4 border-gray-500"
-                            style={{ left: `${left}%`, width: `calc(${width}% + 80px)` }}
-                          >
-                             <span className="absolute left-full ml-1 top-0 text-[8px] font-bold text-gray-600 whitespace-nowrap">
+                          <div className="absolute top-0.5" style={{ left: `${left}%`, width: `${width}%` }}>
+                             {/* The Bar */}
+                             <div className="h-4 bg-gray-300 rounded-md border-l-4 border-gray-500 absolute w-full"></div>
+                             {/* The Label (Sitting TO THE RIGHT of the bar) */}
+                             <span className="absolute left-full ml-1 top-0 text-[8px] font-bold text-gray-600 whitespace-nowrap leading-4">
                                {task.name}
                              </span>
                           </div>
@@ -261,11 +261,11 @@ export default async function GanttPrintPage({
                           </>
                         )}
 
-                        {/* Standard Task Bar: h-2.5 */}
+                        {/* Standard Task Bar */}
                         {!isHeader && !isMilestone && (
                           <>
                             <div 
-                              className={`absolute top-1.5 h-2.5 rounded-full shadow-sm flex items-center overflow-hidden ${colorTheme.bar} bg-opacity-30 border ${colorTheme.border}`}
+                              className={`absolute top-0.5 h-4 rounded-full shadow-sm flex items-center overflow-hidden ${colorTheme.bar} bg-opacity-30 border ${colorTheme.border}`}
                               style={{ left: `${left}%`, width: `${Math.max(width, 0.5)}%` }}
                             >
                                <div className={`h-full ${colorTheme.bar}`} style={{ width: `${task.progress}%` }}></div>
@@ -273,7 +273,7 @@ export default async function GanttPrintPage({
                             
                             {/* Label Next to Bar */}
                             <div 
-                              className="absolute top-1 text-[8px] text-gray-500 whitespace-nowrap flex items-center gap-1"
+                              className="absolute top-0.5 text-[8px] text-gray-500 whitespace-nowrap flex items-center gap-1 leading-4"
                               style={{ left: `calc(${left}% + ${Math.max(width, 0.5)}% + 4px)` }}
                             >
                                <span className="text-gray-400">{task.progress}%</span>
