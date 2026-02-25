@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
-import { addGanttTask, updateGanttTaskDetails, deleteGanttTask, moveGanttTask } from '@/app/actions'
 import GanttView from './GanttView'
 import GanttTaskList from './GanttTaskList'
+import AddTaskForm from './AddTaskForm'
 
 export default async function GanttPage({
   params,
@@ -34,58 +34,13 @@ export default async function GanttPage({
         </a>
       </div>
 
-      {/* 1. Add Task Form */}
-      <div className="bg-white p-4 rounded shadow border border-gray-200">
-        <h3 className="text-sm font-bold text-gray-700 mb-4 uppercase">Add New Task</h3>
-        <form action={addGanttTask} className="flex flex-wrap gap-4 items-end">
-          <input type="hidden" name="project_id" value={id} />
-          
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Task Name</label>
-            <input name="name" required placeholder="e.g. Kick-off Meeting" className="w-full border rounded p-2 text-sm" />
-          </div>
-          
-          {/* TYPE */}
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Type</label>
-            <select name="type" className="w-32 border rounded p-2 text-sm bg-white">
-              <option value="task">Standard Task</option>
-              <option value="project">HEADER / GROUP</option>
-              <option value="milestone">Milestone (◆)</option>
-            </select>
-          </div>
-
-          {/* PARENT (Group Under) */}
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Group Under</label>
-            <select name="parent_id" className="w-40 border rounded p-2 text-sm bg-white">
-              <option value="none">-- None (Root) --</option>
-              {headers.map(h => (
-                <option key={h.id} value={h.id}>{h.name}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Start Date</label>
-            <input name="start_date" type="date" required className="w-full border rounded p-2 text-sm" />
-          </div>
-          
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">End Date</label>
-            <input name="end_date" type="date" required className="w-full border rounded p-2 text-sm" />
-          </div>
-
-          <button className="bg-blue-600 text-white font-bold px-4 py-2 rounded text-sm hover:bg-blue-500 h-[38px]">
-            Add +
-          </button>
-        </form>
-      </div>
+      {/* 1. Add Task Form (New Client Component) */}
+      <AddTaskForm projectId={id} headers={headers} />
 
       {/* 2. Visual Chart */}
       <GanttView tasks={tasks || []} projectId={id} />
 
-      {/* 3. Task Management List */}
+      {/* 3. Task Management List (Draggable) */}
       <GanttTaskList 
         tasks={tasks || []} 
         headers={headers} 
