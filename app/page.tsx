@@ -1,17 +1,24 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import { createProject, signOut } from './actions'
+import { signOut } from './actions'
+import NewProjectForm from '@/app/components/NewProjectForm'
 
 export default async function Dashboard() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) { redirect('/login') }
 
-  // Fetch Projects
+  // 1. Fetch Projects
   const { data: projects } = await supabase
     .from('projects')
     .select('*')
     .order('created_at', { ascending: false })
+
+  // 2. Fetch Customers for the dropdown
+  const { data: customers } = await supabase
+    .from('customers')
+    .select('*')
+    .order('name', { ascending: true })
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -30,68 +37,8 @@ export default async function Dashboard() {
 
       <main className="mx-auto max-w-7xl py-8 px-4 sm:px-6 lg:px-8 space-y-8">
         
-        {/* CREATE PROJECT FORM */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-6 border-b pb-2">Create New Project</h2>
-          
-          <form action={createProject} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            
-            {/* 1. Project Name */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Project Name</label>
-              <input name="name" required className="w-full border border-gray-300 rounded p-2 text-sm focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. New Model Launch" />
-            </div>
-
-            {/* 2. Model */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Model</label>
-              <input name="model" className="w-full border border-gray-300 rounded p-2 text-sm focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. X70 / Myvi" />
-            </div>
-
-            {/* 3. Part Name */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Part Name</label>
-              <input name="part_name" required className="w-full border border-gray-300 rounded p-2 text-sm focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. Front Coil Spring" />
-            </div>
-
-            {/* 4. Part Number */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Part Number</label>
-              <input name="part_number" required className="w-full border border-gray-300 rounded p-2 text-sm focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. P2-31A" />
-            </div>
-
-            {/* 5. Category (Product List) */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Category (Product)</label>
-              <select name="category" className="w-full border border-gray-300 rounded p-2 text-sm bg-white focus:ring-blue-500 focus:border-blue-500">
-                <option value="Coil Spring">Coil Spring</option>
-                <option value="Stabilizer Bar">Stabilizer Bar</option>
-                <option value="Shock Absorber">Shock Absorber</option>
-                <option value="Assembly">Assembly</option>
-                <option value="Machining Product">Machining Product</option>
-              </select>
-            </div>
-
-            {/* 6. Customer */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Customer</label>
-              <select name="customer" className="w-full border border-gray-300 rounded p-2 text-sm bg-white focus:ring-blue-500 focus:border-blue-500">
-                <option value="Proton">Proton</option>
-                <option value="Perodua">Perodua</option>
-                <option value="Honda">Honda</option>
-                <option value="Toyota">Toyota</option>
-                <option value="Mitsubishi">Mitsubishi</option>
-                <option value="Kayaba">Kayaba</option>
-              </select>
-            </div>
-
-            <div className="md:col-span-2 lg:col-span-3 flex justify-end mt-2">
-               <button className="bg-blue-600 text-white font-bold px-8 py-2.5 rounded shadow hover:bg-blue-700 transition">
-                 Create Project +
-               </button>
-            </div>
-          </form>
-        </div>
+        {/* NEW SMART FORM COMPONENT */}
+        <NewProjectForm existingCustomers={customers || []} />
 
         {/* PROJECT LIST */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">

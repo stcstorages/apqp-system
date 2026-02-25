@@ -491,3 +491,18 @@ export async function moveGanttTask(formData: FormData) {
 
   revalidatePath(`/projects/${projectId}/gantt`)
 }
+export async function addCustomer(formData: FormData) {
+  const supabase = await createClient()
+  const name = formData.get('new_customer_name') as string
+
+  if (!name) return
+
+  const { error } = await supabase.from('customers').insert({ name })
+
+  if (error) {
+    console.error('Error adding customer:', error)
+  }
+
+  // Refresh the dashboard so the dropdown updates immediately
+  revalidatePath('/')
+}
