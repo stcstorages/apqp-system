@@ -40,12 +40,11 @@ export default async function GanttPrintPage({
     .order('order_index', { ascending: true })
 
   // --- LOGIC FIX: DYNAMICALLY RECALCULATE HEADERS FOR PRINT ---
-  // This ensures the gray bar matches the children EXACTLY, ignoring DB stale data.
   const processedTasks = rawTasks?.map(t => ({ ...t })) || []
   
   if (processedTasks.length > 0) {
-    // 1. Identify Headers
-    const headerIndices = []
+    // 1. Identify Headers (FIXED: Added type annotation : number[])
+    const headerIndices: number[] = []
     processedTasks.forEach((t, i) => { if (t.type === 'project') headerIndices.push(i) })
 
     // 2. Loop through headers and calculate bounds based on children
