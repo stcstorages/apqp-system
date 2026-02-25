@@ -1,21 +1,24 @@
 import { createClient } from '@/utils/supabase/server'
 import CustomerLogo from '@/app/components/CustomerLogo'
-import PrintControls from '@/app/components/PrintControls' // Import the new control
 
-// Format Date Helper (DD-MMM) - Shorter for the table column
-const formatDateShort = (dateStr: string | null | undefined) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  if (isNaN(date.getTime())) return '-'
-  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+// Helper: Get ISO Week Number
+const getWeekNumber = (d: Date) => {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 }
 
-// Format Date Helper (Full)
-const formatDate = (dateStr: string | null | undefined) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  if (isNaN(date.getTime())) return '-'
-  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')
+// Helper: Modern Color Palette (Cycles through colors based on group index)
+const getGroupColor = (index: number) => {
+  const colors = [
+    { bar: 'bg-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-200' }, // Green
+    { bar: 'bg-blue-500', bg: 'bg-blue-50', border: 'border-blue-200' },       // Blue
+    { bar: 'bg-purple-500', bg: 'bg-purple-50', border: 'border-purple-200' },   // Purple
+    { bar: 'bg-amber-500', bg: 'bg-amber-50', border: 'border-amber-200' },      // Orange
+    { bar: 'bg-rose-500', bg: 'bg-rose-50', border: 'border-rose-200' },         // Red
+  ]
+  return colors[index % colors.length]
 }
 
 export default async function GanttPrintPage({
@@ -27,14 +30,22 @@ export default async function GanttPrintPage({
   const supabase = await createClient()
 
   const { data: project } = await supabase.from('projects').select('*').eq('id', id).single()
-  const { data: tasks } = await supabase.from('gantt_tasks').select('*').eq('project_id', id).order('order_index', { ascending: true })
+  
+  // Sort by Order Index for correct grouping
+  const { data: tasks } = await supabase
+    .from('gantt_tasks')
+    .select('*')
+    .eq('project_id', id)
+    .order('order_index', { ascending: true })
 
-  // Calculate Timeline Bounds
+  // 1. Calculate Timeline Bounds
   let minDate = new Date()
   let maxDate = new Date()
+  
   if (tasks && tasks.length > 0) {
     minDate = new Date(tasks[0].start_date)
     maxDate = new Date(tasks[0].end_date)
+    
     tasks.forEach(t => {
       const s = new Date(t.start_date)
       const e = new Date(t.end_date)
@@ -42,157 +53,225 @@ export default async function GanttPrintPage({
       if (e > maxDate) maxDate = e
     })
   }
-  minDate = new Date(minDate.getFullYear(), minDate.getMonth(), 1)
-  maxDate = new Date(maxDate.getFullYear(), maxDate.getMonth() + 6, 0)
+
+  // Add buffer: Start 1 week before, End 2 weeks after
+  minDate.setDate(minDate.getDate() - 7)
+  maxDate.setDate(maxDate.getDate() + 14)
+
   const totalDuration = maxDate.getTime() - minDate.getTime()
 
-  // Generate Months
-  const months = []
+  // 2. Generate Week Columns (For the Header)
+  const weeks = []
   const tempDate = new Date(minDate)
+  // Align tempDate to Monday
+  const day = tempDate.getDay() || 7
+  if (day !== 1) tempDate.setHours(-24 * (day - 1))
+
   while (tempDate < maxDate) {
-    months.push(new Date(tempDate))
-    tempDate.setMonth(tempDate.getMonth() + 1)
+    weeks.push(new Date(tempDate))
+    tempDate.setDate(tempDate.getDate() + 7)
   }
 
+  // Positioning Helpers
   const getPos = (dateStr: string) => ((new Date(dateStr).getTime() - minDate.getTime()) / totalDuration) * 100
   const getWidth = (startStr: string, endStr: string) => ((new Date(endStr).getTime() - new Date(startStr).getTime()) / totalDuration) * 100
-  const getDuration = (s: string, e: string) => Math.ceil((new Date(e).getTime() - new Date(s).getTime()) / (1000 * 3600 * 24))
+  
+  // Group Logic to assign colors
+  let currentGroupIndex = 0
+  let currentParentId = null
 
   return (
-    <div className="min-h-screen bg-white text-black text-[10px] font-sans">
-      
-      {/* NEW: Client Component for Orientation Toggle */}
-      <PrintControls />
+    <div className="min-h-screen bg-white text-gray-800 text-[10px] font-sans">
+      <style>{`
+        @media print { 
+          @page { size: landscape; margin: 5mm; } 
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } 
+          .no-break { break-inside: avoid; } 
+          /* Remove default table borders */
+          table, td, th { border: none !important; }
+        }
+      `}</style>
 
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-2">
-         <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
+      <div className="flex justify-between items-end mb-4 border-b-2 border-gray-200 pb-2">
+         <div>
+            <div className="flex items-center gap-2 mb-1">
+                <div className="font-bold text-xl italic text-blue-900">SIB APQP</div>
+                <div className="text-gray-400">|</div>
+                <div className="text-lg font-bold text-gray-700">Project Schedule</div>
+            </div>
+            <div className="text-xs text-gray-500">
+                {project.customer} • {project.model} • {project.part_name}
+            </div>
+         </div>
          <CustomerLogo customer={project.customer} />
       </div>
 
-      <div className="border border-black mb-2 flex">
-        <div className="flex-1 p-2 border-r border-black">
-          <h1 className="font-bold text-lg leading-tight">MASTER PROJECT SCHEDULE</h1>
-          <h2 className="text-sm font-semibold">{project.model || ''} - {project.name}</h2>
-        </div>
-        <div className="p-2 flex flex-col justify-center items-end min-w-[200px]">
-          <div className="text-xs">Date: {formatDate(new Date().toISOString())}</div>
-        </div>
-      </div>
-
-      {/* MAIN CONTENT SPLIT */}
-      <div className="flex border border-black">
+      {/* MAIN LAYOUT: FLEX ROW */}
+      <div className="flex border border-gray-200 rounded-lg overflow-hidden">
         
-        {/* LEFT: DATA TABLE */}
-        <div className="w-[300px] flex-shrink-0 border-r border-black flex flex-col">
-          <div className="h-8 border-b border-black bg-gray-200 flex items-center font-bold px-1 text-center">
-            {/* 1. ID Column Removed */}
-            <div className="flex-1 px-2 border-r border-gray-400 text-left">Task Name</div>
-            {/* 2. Added Start Date Column */}
-            <div className="w-14 border-r border-gray-400">Start</div>
-            <div className="w-12">Dur.</div>
+        {/* LEFT SIDE: TASK LIST */}
+        <div className="w-[300px] flex-shrink-0 bg-white border-r border-gray-200 z-20 shadow-lg">
+          {/* Table Header */}
+          <div className="h-12 bg-gray-50 border-b border-gray-200 flex items-end px-3 pb-2 font-bold text-gray-500 uppercase tracking-wider">
+            <div className="flex-1">Task Name</div>
+            <div className="w-12 text-right">Dur.</div>
           </div>
           
-          {tasks?.map((task, index) => {
-            const isHeader = task.type === 'project';
-            const isChild = !!task.parent_id;
+          {/* Table Rows */}
+          <div className="bg-white">
+            {tasks?.map((task) => {
+               // Logic to cycle colors based on Parent Groups
+               if (task.type === 'project') {
+                 currentGroupIndex++
+                 currentParentId = task.id
+               }
+               const colorTheme = getGroupColor(currentGroupIndex)
+               const isHeader = task.type === 'project'
+               const isChild = !!task.parent_id
 
-            return (
-              <div 
-                key={task.id} 
-                className={`h-6 border-b border-gray-200 flex items-center px-1 ${isHeader ? 'bg-gray-100 font-bold' : 'bg-white'}`}
-              >
-                <div className={`flex-1 px-2 border-r border-gray-200 truncate ${isChild ? 'pl-4' : ''}`}>
-                   {task.name}
-                </div>
-                {/* Start Date Column */}
-                <div className="w-14 text-center border-r border-gray-200 text-[9px]">
-                   {formatDateShort(task.start_date)}
-                </div>
-                <div className="w-12 text-center text-[9px]">
-                   {isHeader ? '' : `${getDuration(task.start_date, task.end_date)}d`}
-                </div>
-              </div>
-            )
-          })}
+               return (
+                 <div 
+                    key={task.id} 
+                    className={`h-8 flex items-center px-3 border-b border-gray-50 ${isHeader ? 'bg-gray-50/80 mt-2 font-bold text-gray-800' : 'text-gray-600'}`}
+                 >
+                    {/* Color Indicator Strip */}
+                    <div className={`w-1 h-4 rounded-full mr-3 ${isHeader ? 'bg-gray-400' : colorTheme.bar}`}></div>
+                    
+                    {/* Task Name */}
+                    <div className={`flex-1 truncate ${isChild ? 'pl-4' : ''}`}>
+                       {task.name}
+                    </div>
+                    
+                    {/* Duration */}
+                    <div className="w-12 text-right text-gray-400 text-[9px]">
+                       {Math.ceil((new Date(task.end_date).getTime() - new Date(task.start_date).getTime()) / (1000 * 3600 * 24))}d
+                    </div>
+                 </div>
+               )
+            })}
+          </div>
         </div>
 
-        {/* RIGHT: GANTT CHART */}
-        <div className="flex-1 relative overflow-hidden flex flex-col">
+        {/* RIGHT SIDE: TIMELINE */}
+        <div className="flex-1 relative overflow-hidden bg-white">
           
-          {/* Month Header */}
-          <div className="h-8 border-b border-black bg-white flex relative">
-            {months.map((m, i) => (
-              <div key={i} className="border-r border-gray-400 text-center flex items-center justify-center font-bold" style={{ width: `${(1 / months.length) * 100}%` }}>
-                {m.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
-              </div>
-            ))}
-          </div>
-
-          {/* Vertical Grid Lines (With Weeks) */}
-          <div className="absolute top-8 bottom-0 left-0 right-0 flex z-0">
-             {months.map((_, i) => (
-               <div key={i} className="border-r border-gray-400 h-full relative" style={{ width: `${(1 / months.length) * 100}%` }}>
-                  {/* 3. Thin Week Lines (Approximate 4 weeks per month) */}
-                  <div className="absolute left-[25%] top-0 bottom-0 border-r border-gray-200 border-dashed w-[1px]"></div>
-                  <div className="absolute left-[50%] top-0 bottom-0 border-r border-gray-200 border-dashed w-[1px]"></div>
-                  <div className="absolute left-[75%] top-0 bottom-0 border-r border-gray-200 border-dashed w-[1px]"></div>
-               </div>
-             ))}
-          </div>
-
-          {/* Timeline Bars */}
-          <div className="relative z-10">
-            {tasks?.map((task) => {
-              const left = getPos(task.start_date)
-              const width = getWidth(task.start_date, task.end_date)
-              const isHeader = task.type === 'project';
-              const isMilestone = task.type === 'milestone';
-
+          {/* Timeline Header */}
+          <div className="h-12 bg-gray-50 border-b border-gray-200 relative whitespace-nowrap overflow-hidden">
+            {weeks.map((w, i) => {
+              const left = getPos(w.toISOString())
+              const isNewMonth = i === 0 || w.getDate() < 8
+              
               return (
-                <div 
-                  key={task.id} 
-                  className={`h-6 border-b border-gray-100 relative w-full ${isHeader ? 'bg-gray-100/50' : ''}`}
-                >
-                  {isMilestone ? (
-                    // Milestone
-                    <>
-                      <div className="absolute top-1 w-3 h-3 bg-black transform rotate-45" style={{ left: `${left}%`, marginLeft: '-6px' }}></div>
-                      <div className="absolute top-0 left-0 text-[9px] font-bold hidden print:block whitespace-nowrap pl-2" style={{ left: `${left}%` }}>
-                         {formatDate(task.start_date)}
-                      </div>
-                    </>
-                  ) : isHeader ? (
-                    // Header Bar
-                    <div className="absolute top-1.5 h-3 bg-gray-600 rounded-sm opacity-80" style={{ left: `${left}%`, width: `${width}%` }}></div>
-                  ) : (
-                    // Standard Task Bar
-                    <div className="absolute top-1.5 h-3 bg-blue-600 border border-blue-800" style={{ left: `${left}%`, width: `${width}%` }}>
-                      <div className="h-full bg-blue-900" style={{ width: `${task.progress}%` }}></div>
-                    </div>
-                  )}
+                <div key={i} className="absolute top-0 bottom-0 border-l border-gray-200 pl-1" style={{ left: `${left}%` }}>
+                   {/* Month Label (Only show once per month) */}
+                   {isNewMonth && (
+                     <div className="text-[10px] font-bold text-gray-800 uppercase absolute top-1 left-1">
+                       {w.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                     </div>
+                   )}
+                   {/* Week Number */}
+                   <div className="absolute bottom-1 text-[9px] text-gray-400">
+                     W{getWeekNumber(w)}
+                   </div>
                 </div>
               )
             })}
           </div>
+
+          {/* Grid Background */}
+          <div className="absolute top-12 bottom-0 left-0 right-0 z-0">
+             {weeks.map((w, i) => {
+               const left = getPos(w.toISOString())
+               return (
+                 <div key={i} className="absolute top-0 bottom-0 border-l border-gray-100 h-full" style={{ left: `${left}%` }}></div>
+               )
+             })}
+             {/* Current Date Line (Optional) */}
+             <div className="absolute top-0 bottom-0 border-l-2 border-blue-400 opacity-50 z-0" style={{ left: `${getPos(new Date().toISOString())}%` }}></div>
+          </div>
+
+          {/* Bars Layer */}
+          <div className="relative z-10 pt-[2px]"> {/* Align with table rows */}
+             
+             {/* Reset Loop for Rendering Bars */}
+             {(() => {
+                currentGroupIndex = 0
+                return tasks?.map((task) => {
+                   if (task.type === 'project') currentGroupIndex++
+                   const colorTheme = getGroupColor(currentGroupIndex)
+                   const isHeader = task.type === 'project'
+                   const isMilestone = task.type === 'milestone'
+
+                   const left = getPos(task.start_date)
+                   const width = getWidth(task.start_date, task.end_date)
+                   
+                   return (
+                     <div key={task.id} className={`h-8 relative w-full ${isHeader ? 'mt-2' : ''}`}>
+                        
+                        {/* 1. Header Row Background (Optional Grey Strip) */}
+                        {isHeader && (
+                          <div 
+                            className="absolute top-2 h-4 bg-gray-200/50 rounded-r-md border-l-4 border-gray-500"
+                            style={{ left: `${left}%`, width: `calc(${width}% + 100px)` }} // Extend a bit for label
+                          >
+                             <span className="absolute left-full ml-2 top-0 text-[9px] font-bold text-gray-600 whitespace-nowrap">
+                               {task.name}
+                             </span>
+                          </div>
+                        )}
+
+                        {/* 2. Milestone Diamond */}
+                        {isMilestone && (
+                          <>
+                             <div 
+                               className="absolute top-2 w-4 h-4 bg-amber-400 border-2 border-white shadow-sm transform rotate-45 z-20"
+                               style={{ left: `${left}%`, marginLeft: '-6px' }}
+                             ></div>
+                             <div 
+                               className="absolute top-2 text-[9px] font-bold text-gray-700 whitespace-nowrap z-20"
+                               style={{ left: `${left}%`, marginLeft: '12px' }}
+                             >
+                               {task.name} <span className="text-gray-400 font-normal">({new Date(task.start_date).toLocaleDateString()})</span>
+                             </div>
+                          </>
+                        )}
+
+                        {/* 3. Task Bar (Modern Pill) */}
+                        {!isHeader && !isMilestone && (
+                          <>
+                            <div 
+                              className={`absolute top-2 h-4 rounded-full shadow-sm flex items-center overflow-hidden ${colorTheme.bar} bg-opacity-30 border ${colorTheme.border}`}
+                              style={{ left: `${left}%`, width: `${Math.max(width, 0.5)}%` }} // Min width so it's visible
+                            >
+                               {/* Progress Fill (Darker Inner Pill) */}
+                               <div className={`h-full ${colorTheme.bar}`} style={{ width: `${task.progress}%` }}></div>
+                            </div>
+                            
+                            {/* Label Next to Bar */}
+                            <div 
+                              className="absolute top-2 text-[9px] text-gray-600 whitespace-nowrap flex items-center gap-2"
+                              style={{ left: `calc(${left}% + ${Math.max(width, 0.5)}% + 5px)` }}
+                            >
+                               <span className="font-medium">{task.name}</span>
+                               <span className="text-gray-400 text-[8px]">{task.progress}%</span>
+                            </div>
+                          </>
+                        )}
+                     </div>
+                   )
+                })
+             })()}
+          </div>
+
         </div>
       </div>
       
-      {/* FOOTER */}
-      <div className="mt-2 border border-black flex">
-        <div className="flex-1 p-2 border-r border-black grid grid-cols-4 gap-2 text-[9px]">
-           <div className="flex items-center gap-2"><div className="w-8 h-2 bg-gray-600 rounded-sm"></div> Header/Stage</div>
-           <div className="flex items-center gap-2"><div className="w-8 h-2 bg-blue-600 border border-blue-800"></div> Task</div>
-           <div className="flex items-center gap-2"><div className="w-3 h-3 bg-black transform rotate-45"></div> Milestone</div>
-           <div className="flex items-center gap-2"><div className="w-8 h-2 bg-blue-900"></div> Progress</div>
-           <div className="col-span-4 text-gray-500 mt-1">Project: {project.name} (PN: {project.part_number})</div>
-        </div>
-        <div className="w-[300px] grid grid-cols-3 divide-x divide-black">
-          <div className="flex flex-col"><div className="bg-gray-100 border-b border-black text-center font-bold py-1">Prepared</div><div className="flex-1"></div></div>
-          <div className="flex flex-col"><div className="bg-gray-100 border-b border-black text-center font-bold py-1">Checked</div><div className="flex-1"></div></div>
-          <div className="flex flex-col"><div className="bg-gray-100 border-b border-black text-center font-bold py-1">Approved</div><div className="flex-1"></div></div>
-        </div>
+      <div className="mt-4 text-center text-gray-400 text-[9px]">
+         Generated by SIB APQP System • {new Date().toLocaleDateString()}
       </div>
+
+      <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
     </div>
   )
 }
