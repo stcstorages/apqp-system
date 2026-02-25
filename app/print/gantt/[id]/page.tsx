@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import CustomerLogo from '@/app/components/CustomerLogo'
+import PrintControls from '@/app/components/PrintControls' // Restored Import
 
 // Helper: Get ISO Week Number
 const getWeekNumber = (d: Date) => {
@@ -9,7 +10,7 @@ const getWeekNumber = (d: Date) => {
   return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 }
 
-// Helper: Modern Color Palette (Cycles through colors based on group index)
+// Helper: Modern Color Palette
 const getGroupColor = (index: number) => {
   const colors = [
     { bar: 'bg-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-200' }, // Green
@@ -31,7 +32,7 @@ export default async function GanttPrintPage({
 
   const { data: project } = await supabase.from('projects').select('*').eq('id', id).single()
   
-  // Sort by Order Index for correct grouping
+  // Sort by Order Index
   const { data: tasks } = await supabase
     .from('gantt_tasks')
     .select('*')
@@ -54,16 +55,15 @@ export default async function GanttPrintPage({
     })
   }
 
-  // Add buffer: Start 1 week before, End 2 weeks after
+  // Add buffer
   minDate.setDate(minDate.getDate() - 7)
   maxDate.setDate(maxDate.getDate() + 14)
 
   const totalDuration = maxDate.getTime() - minDate.getTime()
 
-  // 2. Generate Week Columns (For the Header)
+  // 2. Generate Week Columns
   const weeks = []
   const tempDate = new Date(minDate)
-  // Align tempDate to Monday
   const day = tempDate.getDay() || 7
   if (day !== 1) tempDate.setHours(-24 * (day - 1))
 
@@ -72,20 +72,21 @@ export default async function GanttPrintPage({
     tempDate.setDate(tempDate.getDate() + 7)
   }
 
-  // Positioning Helpers
   const getPos = (dateStr: string) => ((new Date(dateStr).getTime() - minDate.getTime()) / totalDuration) * 100
   const getWidth = (startStr: string, endStr: string) => ((new Date(endStr).getTime() - new Date(startStr).getTime()) / totalDuration) * 100
   
-  // Group Logic to assign colors
   let currentGroupIndex = 0
   let currentParentId = null
 
   return (
     <div className="min-h-screen bg-white text-gray-800 text-[10px] font-sans">
+      
+      {/* 1. RESTORED PRINT CONTROLS */}
+      <PrintControls />
+
+      {/* Local Styles (Removed @page size so PrintControls handles it) */}
       <style>{`
         @media print { 
-          @page { size: landscape; margin: 5mm; } 
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } 
           .no-break { break-inside: avoid; } 
           /* Remove default table borders */
           table, td, th { border: none !important; }
@@ -107,21 +108,18 @@ export default async function GanttPrintPage({
          <CustomerLogo customer={project.customer} />
       </div>
 
-      {/* MAIN LAYOUT: FLEX ROW */}
+      {/* MAIN LAYOUT */}
       <div className="flex border border-gray-200 rounded-lg overflow-hidden">
         
         {/* LEFT SIDE: TASK LIST */}
         <div className="w-[300px] flex-shrink-0 bg-white border-r border-gray-200 z-20 shadow-lg">
-          {/* Table Header */}
           <div className="h-12 bg-gray-50 border-b border-gray-200 flex items-end px-3 pb-2 font-bold text-gray-500 uppercase tracking-wider">
             <div className="flex-1">Task Name</div>
             <div className="w-12 text-right">Dur.</div>
           </div>
           
-          {/* Table Rows */}
           <div className="bg-white">
             {tasks?.map((task) => {
-               // Logic to cycle colors based on Parent Groups
                if (task.type === 'project') {
                  currentGroupIndex++
                  currentParentId = task.id
@@ -135,15 +133,10 @@ export default async function GanttPrintPage({
                     key={task.id} 
                     className={`h-8 flex items-center px-3 border-b border-gray-50 ${isHeader ? 'bg-gray-50/80 mt-2 font-bold text-gray-800' : 'text-gray-600'}`}
                  >
-                    {/* Color Indicator Strip */}
                     <div className={`w-1 h-4 rounded-full mr-3 ${isHeader ? 'bg-gray-400' : colorTheme.bar}`}></div>
-                    
-                    {/* Task Name */}
                     <div className={`flex-1 truncate ${isChild ? 'pl-4' : ''}`}>
                        {task.name}
                     </div>
-                    
-                    {/* Duration */}
                     <div className="w-12 text-right text-gray-400 text-[9px]">
                        {Math.ceil((new Date(task.end_date).getTime() - new Date(task.start_date).getTime()) / (1000 * 3600 * 24))}d
                     </div>
@@ -164,13 +157,11 @@ export default async function GanttPrintPage({
               
               return (
                 <div key={i} className="absolute top-0 bottom-0 border-l border-gray-200 pl-1" style={{ left: `${left}%` }}>
-                   {/* Month Label (Only show once per month) */}
                    {isNewMonth && (
                      <div className="text-[10px] font-bold text-gray-800 uppercase absolute top-1 left-1">
                        {w.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                      </div>
                    )}
-                   {/* Week Number */}
                    <div className="absolute bottom-1 text-[9px] text-gray-400">
                      W{getWeekNumber(w)}
                    </div>
@@ -187,14 +178,11 @@ export default async function GanttPrintPage({
                  <div key={i} className="absolute top-0 bottom-0 border-l border-gray-100 h-full" style={{ left: `${left}%` }}></div>
                )
              })}
-             {/* Current Date Line (Optional) */}
              <div className="absolute top-0 bottom-0 border-l-2 border-blue-400 opacity-50 z-0" style={{ left: `${getPos(new Date().toISOString())}%` }}></div>
           </div>
 
           {/* Bars Layer */}
-          <div className="relative z-10 pt-[2px]"> {/* Align with table rows */}
-             
-             {/* Reset Loop for Rendering Bars */}
+          <div className="relative z-10 pt-[2px]">
              {(() => {
                 currentGroupIndex = 0
                 return tasks?.map((task) => {
@@ -209,11 +197,11 @@ export default async function GanttPrintPage({
                    return (
                      <div key={task.id} className={`h-8 relative w-full ${isHeader ? 'mt-2' : ''}`}>
                         
-                        {/* 1. Header Row Background (Optional Grey Strip) */}
+                        {/* Header Bar */}
                         {isHeader && (
                           <div 
                             className="absolute top-2 h-4 bg-gray-200/50 rounded-r-md border-l-4 border-gray-500"
-                            style={{ left: `${left}%`, width: `calc(${width}% + 100px)` }} // Extend a bit for label
+                            style={{ left: `${left}%`, width: `calc(${width}% + 100px)` }}
                           >
                              <span className="absolute left-full ml-2 top-0 text-[9px] font-bold text-gray-600 whitespace-nowrap">
                                {task.name}
@@ -221,7 +209,7 @@ export default async function GanttPrintPage({
                           </div>
                         )}
 
-                        {/* 2. Milestone Diamond */}
+                        {/* Milestone */}
                         {isMilestone && (
                           <>
                              <div 
@@ -237,18 +225,16 @@ export default async function GanttPrintPage({
                           </>
                         )}
 
-                        {/* 3. Task Bar (Modern Pill) */}
+                        {/* Standard Task Bar */}
                         {!isHeader && !isMilestone && (
                           <>
                             <div 
                               className={`absolute top-2 h-4 rounded-full shadow-sm flex items-center overflow-hidden ${colorTheme.bar} bg-opacity-30 border ${colorTheme.border}`}
-                              style={{ left: `${left}%`, width: `${Math.max(width, 0.5)}%` }} // Min width so it's visible
+                              style={{ left: `${left}%`, width: `${Math.max(width, 0.5)}%` }}
                             >
-                               {/* Progress Fill (Darker Inner Pill) */}
                                <div className={`h-full ${colorTheme.bar}`} style={{ width: `${task.progress}%` }}></div>
                             </div>
                             
-                            {/* Label Next to Bar */}
                             <div 
                               className="absolute top-2 text-[9px] text-gray-600 whitespace-nowrap flex items-center gap-2"
                               style={{ left: `calc(${left}% + ${Math.max(width, 0.5)}% + 5px)` }}
@@ -271,7 +257,6 @@ export default async function GanttPrintPage({
          Generated by SIB APQP System • {new Date().toLocaleDateString()}
       </div>
 
-      <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
     </div>
   )
 }
