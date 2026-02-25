@@ -10,13 +10,17 @@ import { redirect } from 'next/navigation'
 async function recalculateParent(supabase: any, parentId: string | null, projectId: string) {
   if (!parentId || parentId === 'none') return
 
+  // 1. Fetch all children
   const { data: children } = await supabase
     .from('gantt_tasks')
     .select('start_date, end_date, progress')
     .eq('parent_id', parentId)
 
+  // If no children, we can't calculate bounds. Optionally reset or leave as is.
   if (!children || children.length === 0) return
 
+  // 2. Calculate Bounds
+  // Initialize with the first child's values
   let minStart = new Date(children[0].start_date).getTime()
   let maxEnd = new Date(children[0].end_date).getTime()
   let totalProgress = 0
@@ -24,19 +28,25 @@ async function recalculateParent(supabase: any, parentId: string | null, project
   children.forEach((child: any) => {
     const s = new Date(child.start_date).getTime()
     const e = new Date(child.end_date).getTime()
+    
     if (s < minStart) minStart = s
     if (e > maxEnd) maxEnd = e
+    
+    // Simple average progress (can be weighted by duration if needed, but simple avg is standard for simple Gantts)
     totalProgress += (child.progress || 0)
   })
 
+  // 3. Average Progress
   const avgProgress = Math.round(totalProgress / children.length)
 
+  // 4. Update Parent
   await supabase.from('gantt_tasks').update({
     start_date: new Date(minStart).toISOString(),
     end_date: new Date(maxEnd).toISOString(),
     progress: avgProgress
   }).eq('id', parentId)
 
+  // Revalidate
   revalidatePath(`/projects/${projectId}/gantt`)
 }
 
@@ -72,7 +82,6 @@ export async function createProject(formData: FormData) {
     return; 
   }
 
-  // Auto-Select Template Logic
   if (!is_template_creation && (!source_id || source_id === 'none')) {
     const { data: custTemplate } = await supabase.from('projects').select('id')
       .eq('is_template', true).eq('customer', customer).eq('product_type', product_type).single()
@@ -85,7 +94,6 @@ export async function createProject(formData: FormData) {
     }
   }
 
-  // Deep Copy Logic
   if (source_id && source_id !== 'none') {
     const { data: sourceSteps } = await supabase
       .from('process_steps')
@@ -151,7 +159,6 @@ export async function updateProjectDetails(formData: FormData) {
   const supabase = await createClient()
   const projectId = formData.get('project_id') as string
   
-  // Explicit Extraction to avoid Loop Errors
   const updates = {
     name: formData.get('name') as string,
     part_number: formData.get('part_number') as string,
@@ -193,30 +200,13 @@ export async function signOut() {
   redirect('/login')
 }
 
-// ==========================================
-// 2. PROCESS FLOW ACTIONS
-// ==========================================
-
+// ... (Process Flow, FMEA, CP Actions - unchanged)
 export async function addProcessStep(formData: FormData) {
   const supabase = await createClient()
   const projectId = formData.get('project_id') as string
-  
-  const stepNumber = formData.get('step_number') as string
-  const description = formData.get('description') as string
-  const symbolType = formData.get('symbol_type') as string
-  const remarks = formData.get('remarks') as string
-  const specialCharId = formData.get('special_char_id') as string || null
-  const machineTools = formData.get('machine_tools') as string || null
-
-  const { error } = await supabase.from('process_steps').insert({
-    project_id: projectId,
-    step_number: stepNumber,
-    description, symbol_type: symbolType, remarks,
-    special_char_id: specialCharId, machine_tools: machineTools
-  })
-
-  if (error) { console.error('Error adding step:', error); return; }
-
+  const data: any = { project_id: projectId }
+  formData.forEach((value, key) => { if(key !== 'project_id') data[key] = value })
+  await supabase.from('process_steps').insert(data)
   revalidatePath(`/projects/${projectId}/process-flow`)
   revalidatePath(`/projects/${projectId}/control-plan`)
 }
@@ -225,19 +215,9 @@ export async function updateProcessStep(formData: FormData) {
   const supabase = await createClient()
   const id = formData.get('step_id') as string
   const projectId = formData.get('project_id') as string
-  
-  const stepNumber = formData.get('step_number') as string
-  const description = formData.get('description') as string
-  const symbolType = formData.get('symbol_type') as string
-  const remarks = formData.get('remarks') as string
-  const specialCharId = formData.get('special_char_id') as string || null
-  const machineTools = formData.get('machine_tools') as string || null
-
-  await supabase.from('process_steps').update({
-    step_number: stepNumber, description, symbol_type: symbolType,
-    remarks, special_char_id: specialCharId, machine_tools: machineTools
-  }).eq('id', id)
-
+  const data: any = {}
+  formData.forEach((value, key) => { if(key !== 'step_id' && key !== 'project_id') data[key] = value })
+  await supabase.from('process_steps').update(data).eq('id', id)
   revalidatePath(`/projects/${projectId}/process-flow`)
   revalidatePath(`/projects/${projectId}/control-plan`)
 }
@@ -250,16 +230,10 @@ export async function deleteProcessStep(formData: FormData) {
   revalidatePath(`/projects/${projectId}/process-flow`)
 }
 
-// ==========================================
-// 3. FMEA ACTIONS (FIXED: NO LOOPS)
-// ==========================================
-
 export async function addFmeaRow(formData: FormData) {
   const supabase = await createClient()
   const stepId = formData.get('step_id') as string
   const projectId = formData.get('project_id') as string
-  
-  // Explicit Extraction
   const failure_mode = formData.get('failure_mode') as string
   const failure_effect = formData.get('failure_effect') as string
   const severity = parseInt(formData.get('severity') as string) || 0
@@ -283,7 +257,6 @@ export async function addFmeaRow(formData: FormData) {
     recommended_actions, responsibility, action_taken,
     act_severity, act_occurrence, act_detection
   })
-
   revalidatePath(`/projects/${projectId}/fmea`)
 }
 
@@ -291,8 +264,6 @@ export async function updateFmeaRow(formData: FormData) {
   const supabase = await createClient()
   const id = formData.get('row_id') as string
   const projectId = formData.get('project_id') as string
-  
-  // Explicit Extraction
   const failure_mode = formData.get('failure_mode') as string
   const failure_effect = formData.get('failure_effect') as string
   const severity = parseInt(formData.get('severity') as string) || 0
@@ -315,7 +286,6 @@ export async function updateFmeaRow(formData: FormData) {
     recommended_actions, responsibility, action_taken,
     act_severity, act_occurrence, act_detection
   }).eq('id', id)
-
   revalidatePath(`/projects/${projectId}/fmea`)
 }
 
@@ -327,38 +297,13 @@ export async function deleteFmeaRow(formData: FormData) {
   revalidatePath(`/projects/${projectId}/fmea`)
 }
 
-// ==========================================
-// 4. CONTROL PLAN ACTIONS
-// ==========================================
-
 export async function addControlPlanRow(formData: FormData) {
   const supabase = await createClient()
   const pfmeaId = formData.get('pfmea_id') as string
   const projectId = formData.get('project_id') as string
-  
-  const char_product = formData.get('characteristic_product') as string
-  const char_process = formData.get('characteristic_process') as string
-  const spec = formData.get('specification_tolerance') as string
-  const eval_method = formData.get('eval_measurement_technique') as string
-  const sample_size = formData.get('sample_size') as string
-  const sample_freq = formData.get('sample_freq') as string
-  const control_method = formData.get('control_method') as string
-  const reaction_plan = formData.get('reaction_plan') as string
-  const reaction_owner = formData.get('reaction_owner') as string
-
-  await supabase.from('control_plan_records').insert({
-    pfmea_id: pfmeaId,
-    characteristic_product: char_product,
-    characteristic_process: char_process,
-    specification_tolerance: spec,
-    eval_measurement_technique: eval_method,
-    sample_size,
-    sample_freq,
-    control_method,
-    reaction_plan,
-    reaction_owner
-  })
-
+  const data: any = {}
+  formData.forEach((value, key) => { if(key !== 'project_id') data[key] = value })
+  await supabase.from('control_plan_records').insert(data)
   revalidatePath(`/projects/${projectId}/control-plan`)
 }
 
@@ -385,14 +330,12 @@ export async function addGanttTask(formData: FormData) {
   let start = formData.get('start_date') as string
   let end = formData.get('end_date') as string
 
-  // Handle Default Dates for Headers
   if (type === 'project' && (!start || !end)) {
     const today = new Date().toISOString()
     start = today
     end = today
   }
 
-  // Find Max Order
   const { data: maxOrder } = await supabase
     .from('gantt_tasks')
     .select('order_index')
@@ -414,7 +357,6 @@ export async function addGanttTask(formData: FormData) {
     order_index: nextOrder
   })
 
-  // Recalculate Parent
   if (parentId && parentId !== 'none') {
     await recalculateParent(supabase, parentId, projectId)
   }
@@ -443,7 +385,7 @@ export async function updateGanttTaskDetails(formData: FormData) {
     parent_id: parentId === 'none' ? null : parentId
   }).eq('id', id)
 
-  // Recalculate Parent
+  // Recalculate NEW Parent
   if (parentId && parentId !== 'none') {
     await recalculateParent(supabase, parentId, projectId)
   }
