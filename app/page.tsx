@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { signOut } from './actions'
 import NewProjectForm from '@/app/components/NewProjectForm'
+import DeleteProjectButton from '@/app/components/DeleteProjectButton' // Import Button
 
 export default async function Dashboard() {
   const supabase = await createClient()
@@ -12,6 +13,7 @@ export default async function Dashboard() {
   const { data: projects } = await supabase
     .from('projects')
     .select('*')
+    .eq('is_template', false) // Only real projects
     .order('created_at', { ascending: false })
 
   // 2. Fetch Customers for the dropdown
@@ -49,7 +51,7 @@ export default async function Dashboard() {
             {projects?.length === 0 && <li className="p-8 text-center text-gray-500">No projects found.</li>}
             
             {projects?.map((project) => (
-              <li key={project.id} className="hover:bg-gray-50 transition">
+              <li key={project.id} className="hover:bg-gray-50 transition relative group">
                 <a href={`/projects/${project.id}`} className="block px-6 py-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -64,11 +66,12 @@ export default async function Dashboard() {
                         <span>{project.part_number}</span>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex items-center gap-4">
                       <span className="inline-block bg-blue-50 text-blue-700 text-[10px] px-2 py-1 rounded border border-blue-100 mb-1">
                         {project.product_type}
                       </span>
-                      <p className="text-[10px] text-gray-400">{new Date(project.created_at).toLocaleDateString()}</p>
+                      {/* Delete Button Component */}
+                      <DeleteProjectButton projectId={project.id} />
                     </div>
                   </div>
                 </a>
