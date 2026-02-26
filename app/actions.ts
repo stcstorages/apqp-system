@@ -48,31 +48,37 @@ export async function createProject(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) { redirect('/login') }
+  if (!user) { return { error: "User not logged in" } }
 
   const name = formData.get('name') as string
   const model = formData.get('model') as string
   const part_name = formData.get('part_name') as string
   const part_number = formData.get('part_number') as string
-  const product_type = formData.get('category') as string // Maps UI 'category' to DB 'product_type'
+  const product_type = formData.get('category') as string // Maps 'category' UI to 'product_type' DB
   const customer = formData.get('customer') as string
   
   const is_template_creation = formData.get('is_template_creation') === 'true'
   let source_id = formData.get('copy_from_id') as string
 
-  const { data: newProject, error: projError } = await supabase.from('projects').insert({
-    name, model, part_name, part_number, product_type, customer,
+  // Insert Project
+  const { data: newProject, error } = await supabase.from('projects').insert({
+    name,
+    model,
+    part_name,
+    part_number,
+    product_type,
+    customer,
     owner_id: user.id,
     status: is_template_creation ? 'template' : 'draft',
     is_template: is_template_creation
   }).select().single()
 
-  if (projError || !newProject) { 
-    console.error('Error creating project:', projError); 
-    return; 
+  if (error) { 
+    console.error('Error creating project:', error)
+    return { error: error.message }
   }
 
-  // Auto-Select Template Logic
+  // Template Copying Logic
   if (!is_template_creation && (!source_id || source_id === 'none')) {
     const { data: custTemplate } = await supabase.from('projects').select('id')
       .eq('is_template', true).eq('customer', customer).eq('product_type', product_type).single()
@@ -85,7 +91,7 @@ export async function createProject(formData: FormData) {
     }
   }
 
-  // Deep Copy Logic
+  // Deep Copy Data
   if (source_id && source_id !== 'none') {
     const { data: sourceSteps } = await supabase
       .from('process_steps')
@@ -144,11 +150,10 @@ export async function createProject(formData: FormData) {
     }
   }
 
-  // Redirect after creation
   if (newProject) {
     revalidatePath('/')
-    // If it's a template, stay on dash, if real project go to hub
     if (!is_template_creation) redirect(`/projects/${newProject.id}`)
+    else return { success: true }
   }
 }
 
@@ -156,42 +161,27 @@ export async function addCustomer(formData: FormData) {
   const supabase = await createClient()
   const name = formData.get('new_customer_name') as string
 
-  if (!name) return
+  if (!name) return { error: "Name is empty" }
 
   const { error } = await supabase.from('customers').insert({ name })
-  if (error) console.error('Error adding customer:', error)
+
+  if (error) {
+    console.error('Error adding customer:', error)
+    return { error: error.message }
+  }
 
   revalidatePath('/')
+  return { success: true }
 }
 
 export async function updateProjectDetails(formData: FormData) {
   const supabase = await createClient()
   const projectId = formData.get('project_id') as string
   
-  const updates = {
-    name: formData.get('name') as string,
-    part_number: formData.get('part_number') as string,
-    customer: formData.get('customer') as string,
-    model: formData.get('model') as string,
-    drawing_number: formData.get('drawing_number') as string,
-    cp_number: formData.get('cp_number') as string,
-    key_contact: formData.get('key_contact') as string,
-    core_team: formData.get('core_team') as string,
-    cp_phase: formData.get('cp_phase') as string,
-    flow_phase: formData.get('flow_phase') as string,
-    flow_number: formData.get('flow_number') as string,
-    flow_date_orig: formData.get('flow_date_orig') as string || null,
-    flow_date_rev: formData.get('flow_date_rev') as string || null,
-    pfmea_phase: formData.get('pfmea_phase') as string,
-    pfmea_number: formData.get('pfmea_number') as string,
-    pfmea_date_orig: formData.get('pfmea_date_orig') as string || null,
-    pfmea_date_rev: formData.get('pfmea_date_rev') as string || null,
-    cp_date_orig: formData.get('cp_date_orig') as string || null,
-    cp_date_rev: formData.get('cp_date_rev') as string || null,
-    customer_eng_approval: formData.get('customer_eng_approval') as string || null,
-    customer_quality_approval: formData.get('customer_quality_approval') as string || null,
-    other_approval: formData.get('other_approval') as string || null
-  }
+  const updates: any = {}
+  formData.forEach((value, key) => { 
+      if(key !== 'project_id' && !key.startsWith('$')) updates[key] = value === '' ? null : value 
+  })
 
   const { error } = await supabase.from('projects').update(updates).eq('id', projectId)
   if (error) console.error('Error updating details:', error)
@@ -217,21 +207,10 @@ export async function addProcessStep(formData: FormData) {
   const supabase = await createClient()
   const projectId = formData.get('project_id') as string
   
-  const stepNumber = formData.get('step_number') as string
-  const description = formData.get('description') as string
-  const symbolType = formData.get('symbol_type') as string
-  const remarks = formData.get('remarks') as string
-  const specialCharId = formData.get('special_char_id') as string || null
-  const machineTools = formData.get('machine_tools') as string || null
+  const data: any = { project_id: projectId }
+  formData.forEach((value, key) => { if(key !== 'project_id') data[key] = value })
 
-  const { error } = await supabase.from('process_steps').insert({
-    project_id: projectId,
-    step_number: stepNumber,
-    description, symbol_type: symbolType,
-    remarks, special_char_id: specialCharId,
-    machine_tools: machineTools
-  })
-
+  const { error } = await supabase.from('process_steps').insert(data)
   if (error) { console.error('Error adding step:', error); return; }
 
   revalidatePath(`/projects/${projectId}/process-flow`)
@@ -242,19 +221,10 @@ export async function updateProcessStep(formData: FormData) {
   const supabase = await createClient()
   const id = formData.get('step_id') as string
   const projectId = formData.get('project_id') as string
-  
-  const stepNumber = formData.get('step_number') as string
-  const description = formData.get('description') as string
-  const symbolType = formData.get('symbol_type') as string
-  const remarks = formData.get('remarks') as string
-  const specialCharId = formData.get('special_char_id') as string || null
-  const machineTools = formData.get('machine_tools') as string || null
+  const data: any = {}
+  formData.forEach((value, key) => { if(key !== 'step_id' && key !== 'project_id') data[key] = value })
 
-  await supabase.from('process_steps').update({
-    step_number: stepNumber, description, symbol_type: symbolType,
-    remarks, special_char_id: specialCharId, machine_tools: machineTools
-  }).eq('id', id)
-
+  await supabase.from('process_steps').update(data).eq('id', id)
   revalidatePath(`/projects/${projectId}/process-flow`)
   revalidatePath(`/projects/${projectId}/control-plan`)
 }
@@ -268,7 +238,7 @@ export async function deleteProcessStep(formData: FormData) {
 }
 
 // ==========================================
-// 3. FMEA ACTIONS (FIXED: NO LOOPS)
+// 3. FMEA ACTIONS
 // ==========================================
 
 export async function addFmeaRow(formData: FormData) {
@@ -276,7 +246,7 @@ export async function addFmeaRow(formData: FormData) {
   const stepId = formData.get('step_id') as string
   const projectId = formData.get('project_id') as string
   
-  // Explicit Extraction - Prevents Build Errors
+  // Explicit Extraction
   const failure_mode = formData.get('failure_mode') as string
   const failure_effect = formData.get('failure_effect') as string
   const severity = parseInt(formData.get('severity') as string) || 0
@@ -352,25 +322,9 @@ export async function addControlPlanRow(formData: FormData) {
   const supabase = await createClient()
   const pfmeaId = formData.get('pfmea_id') as string
   const projectId = formData.get('project_id') as string
-  
-  // Explicit Extraction (Safer)
-  const characteristic_product = formData.get('characteristic_product') as string
-  const characteristic_process = formData.get('characteristic_process') as string
-  const specification_tolerance = formData.get('specification_tolerance') as string
-  const eval_measurement_technique = formData.get('eval_measurement_technique') as string
-  const sample_size = formData.get('sample_size') as string
-  const sample_freq = formData.get('sample_freq') as string
-  const control_method = formData.get('control_method') as string
-  const reaction_plan = formData.get('reaction_plan') as string
-  const reaction_owner = formData.get('reaction_owner') as string
-
-  await supabase.from('control_plan_records').insert({
-    pfmea_id: pfmeaId,
-    characteristic_product, characteristic_process, specification_tolerance,
-    eval_measurement_technique, sample_size, sample_freq,
-    control_method, reaction_plan, reaction_owner
-  })
-
+  const data: any = {}
+  formData.forEach((value, key) => { if(key !== 'project_id') data[key] = value })
+  await supabase.from('control_plan_records').insert(data)
   revalidatePath(`/projects/${projectId}/control-plan`)
 }
 
@@ -397,14 +351,12 @@ export async function addGanttTask(formData: FormData) {
   let start = formData.get('start_date') as string
   let end = formData.get('end_date') as string
 
-  // Handle Default Dates for Headers
   if (type === 'project' && (!start || !end)) {
     const today = new Date().toISOString()
     start = today
     end = today
   }
 
-  // Find Max Order
   const { data: maxOrder } = await supabase
     .from('gantt_tasks')
     .select('order_index')
@@ -426,7 +378,6 @@ export async function addGanttTask(formData: FormData) {
     order_index: nextOrder
   })
 
-  // Recalculate Parent
   if (parentId && parentId !== 'none') {
     await recalculateParent(supabase, parentId, projectId)
   }

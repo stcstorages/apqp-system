@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createProject, addCustomer } from '@/app/actions'
+import { useRouter } from 'next/navigation'
 
 type Props = {
   existingCustomers: { id: string, name: string }[]
@@ -10,17 +11,28 @@ type Props = {
 export default function NewProjectForm({ existingCustomers }: Props) {
   const [isAddingCustomer, setIsAddingCustomer] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
 
   const handleSubmit = async (formData: FormData) => {
-    setIsLoading(true) // Start Animation
+    setIsLoading(true)
     try {
-      await createProject(formData)
-      // Note: If successful, the server action redirects the page, 
-      // so this spinner will spin until the new page loads.
+      const result = await createProject(formData)
+      
+      // Handle Error from Server
+      if (result && result.error) {
+        alert("Database Error: " + result.error)
+        setIsLoading(false)
+      } 
+      // Handle Success for Template (no redirect in server action)
+      else if (result && result.success) {
+         setIsLoading(false)
+         router.refresh()
+      }
+      // If redirect happened in server action, isLoading will just stay true until page unloads
     } catch (error) {
       console.error(error)
-      setIsLoading(false) // Stop if error
-      alert("Error creating project. Please check the database columns.")
+      setIsLoading(false)
+      alert("System Error: Check console for details")
     }
   }
 
@@ -87,19 +99,9 @@ export default function NewProjectForm({ existingCustomers }: Props) {
               </button>
             </div>
           ) : (
-            // Mini Form to Add Customer
             <div className="flex gap-2">
-               {/* Hidden trigger for server action */}
-               <button 
-                  type="submit" 
-                  formAction={async (formData) => {
-                      await addCustomer(formData)
-                      setIsAddingCustomer(false)
-                  }}
-                  className="hidden" 
-                  id="submit-customer"
-               />
                <input 
+                 id="new-customer-input"
                  name="new_customer_name" 
                  autoFocus
                  placeholder="New Customer Name" 
@@ -107,12 +109,14 @@ export default function NewProjectForm({ existingCustomers }: Props) {
                />
                <button 
                   type="button"
-                  onClick={() => {
-                     const input = document.getElementsByName('new_customer_name')[0] as HTMLInputElement;
+                  onClick={async () => {
+                     const input = document.getElementById('new-customer-input') as HTMLInputElement;
                      if(input.value) {
                          const fd = new FormData();
                          fd.append('new_customer_name', input.value);
-                         addCustomer(fd).then(() => setIsAddingCustomer(false));
+                         const res = await addCustomer(fd);
+                         if(res?.error) alert(res.error);
+                         else setIsAddingCustomer(false);
                      }
                   }}
                   className="bg-green-600 text-white px-3 rounded hover:bg-green-500 text-xs font-bold"
