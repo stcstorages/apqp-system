@@ -23,12 +23,17 @@ export default function NewProjectForm({ existingCustomers }: Props) {
         alert("Database Error: " + result.error)
         setIsLoading(false)
       } 
-      // Handle Success for Template (no redirect in server action)
+      // Handle Success
       else if (result && result.success) {
-         setIsLoading(false)
-         router.refresh()
+         if (result.newProjectId) {
+             // Redirect to the new project
+             router.push(`/projects/${result.newProjectId}`)
+         } else {
+             // Template creation (stay on page)
+             setIsLoading(false)
+             router.refresh()
+         }
       }
-      // If redirect happened in server action, isLoading will just stay true until page unloads
     } catch (error) {
       console.error(error)
       setIsLoading(false)

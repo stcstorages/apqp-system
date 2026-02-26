@@ -152,8 +152,8 @@ export async function createProject(formData: FormData) {
 
   if (newProject) {
     revalidatePath('/')
-    if (!is_template_creation) redirect(`/projects/${newProject.id}`)
-    else return { success: true }
+    // FIXED: Do NOT redirect here. Return the ID so Client Component can redirect safely.
+    return { success: true, newProjectId: newProject.id }
   }
 }
 
@@ -351,12 +351,14 @@ export async function addGanttTask(formData: FormData) {
   let start = formData.get('start_date') as string
   let end = formData.get('end_date') as string
 
+  // Handle Default Dates for Headers
   if (type === 'project' && (!start || !end)) {
     const today = new Date().toISOString()
     start = today
     end = today
   }
 
+  // Find Max Order
   const { data: maxOrder } = await supabase
     .from('gantt_tasks')
     .select('order_index')
@@ -378,6 +380,7 @@ export async function addGanttTask(formData: FormData) {
     order_index: nextOrder
   })
 
+  // Recalculate Parent
   if (parentId && parentId !== 'none') {
     await recalculateParent(supabase, parentId, projectId)
   }
