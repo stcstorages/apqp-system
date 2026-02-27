@@ -20,14 +20,15 @@ export default async function ProcessFlowPrintPage({
   const { id } = await params
   const supabase = await createClient()
   
+  // 1. Fetch Project
   const { data: project } = await supabase.from('projects').select('*').eq('id', id).single()
   
-  // NEW: Fetch Customer Logo Data
+  // 2. Fetch Customer Logo (FIXED: Used maybeSingle to prevent crash if not found)
   const { data: customerData } = await supabase
     .from('customers')
     .select('logo_url')
     .eq('name', project.customer)
-    .single()
+    .maybeSingle() 
 
   const { data: steps } = await supabase
     .from('process_steps')
@@ -54,7 +55,7 @@ export default async function ProcessFlowPrintPage({
         }
       `}</style>
 
-      {/* LOGO HEADER - Pass the dynamic logoUrl */}
+      {/* LOGO HEADER */}
       <div className="flex justify-between items-center mb-2">
          <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
          <CustomerLogo customer={project.customer} logoUrl={customerData?.logo_url} />
