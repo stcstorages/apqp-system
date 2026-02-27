@@ -8,20 +8,25 @@ export default function AddStepForm({ projectId }: { projectId: string }) {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
-  const handleSubmit = async (formData: FormData) => {
-    setIsLoading(true) // Force UI update immediately
+  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault() // Stop default browser reload
+    setIsLoading(true) // 1. Start Spinner immediately
+
+    const form = e.currentTarget
+    const formData = new FormData(form)
+
     try {
+      // 2. Call Server Action
       await addProcessStep(formData)
       
-      // Clear inputs manually
-      const form = document.getElementById('add-step-form') as HTMLFormElement
-      if (form) form.reset()
-      
+      // 3. Reset form and refresh data
+      form.reset()
       router.refresh()
-    } catch (e) {
-      console.error(e)
-      alert("Failed to save")
+    } catch (error) {
+      console.error(error)
+      alert("Failed to add step")
     } finally {
+      // 4. Stop Spinner
       setIsLoading(false)
     }
   }
@@ -33,7 +38,7 @@ export default function AddStepForm({ projectId }: { projectId: string }) {
         Define the process flow here. Select symbols and special characteristics if applicable.
       </p>
       
-      <form id="add-step-form" action={handleSubmit} className="space-y-4">
+      <form id="add-step-form" onSubmit={handleFormSubmit} className="space-y-4">
         <input type="hidden" name="project_id" value={projectId} />
         
         <div className="grid grid-cols-2 gap-2">
@@ -58,9 +63,6 @@ export default function AddStepForm({ projectId }: { projectId: string }) {
           <label className="block text-xs font-bold text-gray-700 uppercase">Operation Description</label>
           <input name="description" required placeholder="e.g. Injection Molding" className="mt-1 block w-full rounded border border-gray-300 p-2 text-sm" />
         </div>
-
-        {/* Note: Special Char Dropdown removed from ADD form to keep it simple, can edit later. Or add if needed. */}
-        {/* If you want SC in add form, tell me. For now, matching previous layout. */}
         
         <div>
           <label className="block text-xs font-bold text-gray-700 uppercase">Remarks / Freq</label>

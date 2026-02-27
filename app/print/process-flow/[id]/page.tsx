@@ -20,25 +20,28 @@ export default async function ProcessFlowPrintPage({
   const { id } = await params
   const supabase = await createClient()
   
-  const { data: project } = await supabase.from('projects').select('*').eq('id', id).single()
+  // 1. Fetch Project with safe fail
+  const { data: project, error } = await supabase.from('projects').select('*').eq('id', id).maybeSingle()
   
-  // FIX: Use maybeSingle() instead of single() to avoid crash if customer/logo not found
-  const { data: customerData } = await supabase
-    .from('customers')
-    .select('logo_url')
-    .eq('name', project.customer)
-    .maybeSingle() 
+  // FIX: If project not found, show error instead of crashing
+  if (error || !project) {
+    return <div className="p-10 text-center text-red-600 font-bold">Error: Project not found. Please try again.</div>
+  }
+  
+  // 2. Fetch Customer Logo (Only if customer exists)
+  let logoUrl = null
+  if (project.customer) {
+    const { data: customerData } = await supabase
+      .from('customers')
+      .select('logo_url')
+      .eq('name', project.customer)
+      .maybeSingle()
+    if (customerData) logoUrl = customerData.logo_url
+  }
 
   const { data: steps } = await supabase
     .from('process_steps')
-    .select(`
-      *,
-      special_characteristics (
-        name,
-        symbol_code,
-        description
-      )
-    `)
+    .select(`*, special_characteristics (name, symbol_code, description)`)
     .eq('project_id', id)
     .order('step_number', { ascending: true })
 
@@ -57,7 +60,7 @@ export default async function ProcessFlowPrintPage({
       {/* LOGO HEADER */}
       <div className="flex justify-between items-center mb-2">
          <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
-         <CustomerLogo customer={project.customer} logoUrl={customerData?.logo_url} />
+         <CustomerLogo customer={project.customer} logoUrl={logoUrl} />
       </div>
 
       {/* DOCUMENT HEADER */}
@@ -66,11 +69,7 @@ export default async function ProcessFlowPrintPage({
           Process and Inspection Flow Chart
         </div>
         <div className="grid grid-cols-5 divide-x divide-black text-center bg-gray-100 font-bold border-b border-black">
-          <div className="p-1">MODEL</div>
-          <div className="p-1">CUSTOMER</div>
-          <div className="p-1">PART NAME</div>
-          <div className="p-1">PART NO</div>
-          <div className="p-1">DOC. NO.</div>
+          <div className="p-1">MODEL</div><div className="p-1">CUSTOMER</div><div className="p-1">PART NAME</div><div className="p-1">PART NO</div><div className="p-1">DOC. NO.</div>
         </div>
         <div className="grid grid-cols-5 divide-x divide-black text-center">
           <div className="p-1">{project.model || '-'}</div>
@@ -93,8 +92,8 @@ export default async function ProcessFlowPrintPage({
           </tr>
         </thead>
         <tbody>
-          {steps?.map((step, index) => {
-            const isLast = index === (steps.length - 1);
+          {(steps || []).map((step, index) => {
+            const isLast = index === ((steps?.length || 1) - 1);
             const isInspection = step.symbol_type === 'inspection';
             
             return (
@@ -164,7 +163,7 @@ export default async function ProcessFlowPrintPage({
           <div>
              <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">KEY CHARACTERISTICS</div>
              <div className="p-2 space-y-1">
-               {scLibrary?.map(sc => (
+               {(scLibrary || []).map((sc: any) => (
                  <div key={sc.id} className="flex justify-between items-center border-b border-gray-100 last:border-0">
                     <span>{sc.name}</span>
                     <SpecialSymbol code={sc.symbol_code} />
