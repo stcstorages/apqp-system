@@ -4,12 +4,21 @@ import SpecialSymbol from '@/app/components/SpecialSymbol'
 import RichText from '@/app/components/RichText'
 import CustomerLogo from '@/app/components/CustomerLogo'
 
-// Format Date Helper
+// 1. Safe Date Formatter
 const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return '-'
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')
+}
+
+// 2. Safe Symbol Code Extractor (Fixes the crash)
+const getSymbolCode = (scData: any) => {
+  if (!scData) return null
+  if (Array.isArray(scData)) {
+    return scData.length > 0 ? scData[0].symbol_code : null
+  }
+  return scData.symbol_code
 }
 
 export default async function ProcessFlowPrintPage({
@@ -20,51 +29,36 @@ export default async function ProcessFlowPrintPage({
   const { id } = await params
   const supabase = await createClient()
   
-  // 1. Fetch Project with Error Handling
-  const { data: project, error: projectError } = await supabase
-    .from('projects')
-    .select('*')
-    .eq('id', id)
-    .single()
+  // Fetch Project
+  const { data: project, error: projError } = await supabase.from('projects').select('*').eq('id', id).single()
   
-  // STOP CRASH: If project is missing or error occurs, stop here.
-  if (projectError || !project) {
-    return (
-      <div className="p-10 text-center text-red-600 font-bold border border-red-300 bg-red-50 m-10 rounded">
-        System Error: Could not load project data. <br/>
-        ID: {id} <br/>
-        Details: {projectError?.message || 'Project not found'}
-      </div>
-    )
+  if (projError || !project) {
+    return <div className="p-4 text-red-600">Error loading project: {projError?.message}</div>
   }
   
-  // 2. Fetch Customer Logo (Only if customer name exists)
+  // Fetch Logo
   let logoUrl = null
   if (project.customer) {
     const { data: customerData } = await supabase
       .from('customers')
       .select('logo_url')
-      .ilike('name', project.customer) // Case-insensitive match is safer
+      .eq('name', project.customer)
       .maybeSingle()
-      
     if (customerData) logoUrl = customerData.logo_url
   }
 
-  // 3. Fetch Steps
+  // Fetch Steps
   const { data: steps } = await supabase
     .from('process_steps')
     .select(`
       *,
       special_characteristics (
-        name,
-        symbol_code,
-        description
+        symbol_code
       )
     `)
     .eq('project_id', id)
     .order('step_number', { ascending: true })
 
-  // 4. Fetch Library
   const { data: scLibrary } = await supabase.from('special_characteristics').select('*')
 
   return (
@@ -80,7 +74,6 @@ export default async function ProcessFlowPrintPage({
       {/* LOGO HEADER */}
       <div className="flex justify-between items-center mb-2">
          <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
-         {/* Pass the found URL explicitly */}
          <CustomerLogo customer={project.customer} logoUrl={logoUrl} />
       </div>
 
@@ -120,7 +113,8 @@ export default async function ProcessFlowPrintPage({
           {(steps || []).map((step, index) => {
             const isLast = index === ((steps?.length || 1) - 1);
             const isInspection = step.symbol_type === 'inspection';
-            
+            const symbolCode = getSymbolCode(step.special_characteristics); // Use Helper
+
             return (
               <tr key={step.id}>
                 <td className="border border-black p-2 text-center font-bold align-middle">{step.step_number}</td>
@@ -156,9 +150,9 @@ export default async function ProcessFlowPrintPage({
                 </td>
 
                 <td className="border border-black p-1 text-center align-middle">
-                  {step.special_characteristics && (
+                  {symbolCode && (
                     <div className="flex justify-center items-center">
-                       <SpecialSymbol code={step.special_characteristics.symbol_code} />
+                       <SpecialSymbol code={symbolCode} />
                     </div>
                   )}
                 </td>
