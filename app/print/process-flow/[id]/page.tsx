@@ -20,31 +20,51 @@ export default async function ProcessFlowPrintPage({
   const { id } = await params
   const supabase = await createClient()
   
-  // 1. Fetch Project with safe fail
-  const { data: project, error } = await supabase.from('projects').select('*').eq('id', id).maybeSingle()
+  // 1. Fetch Project with Error Handling
+  const { data: project, error: projectError } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', id)
+    .single()
   
-  // FIX: If project not found, show error instead of crashing
-  if (error || !project) {
-    return <div className="p-10 text-center text-red-600 font-bold">Error: Project not found. Please try again.</div>
+  // STOP CRASH: If project is missing or error occurs, stop here.
+  if (projectError || !project) {
+    return (
+      <div className="p-10 text-center text-red-600 font-bold border border-red-300 bg-red-50 m-10 rounded">
+        System Error: Could not load project data. <br/>
+        ID: {id} <br/>
+        Details: {projectError?.message || 'Project not found'}
+      </div>
+    )
   }
   
-  // 2. Fetch Customer Logo (Only if customer exists)
+  // 2. Fetch Customer Logo (Only if customer name exists)
   let logoUrl = null
   if (project.customer) {
     const { data: customerData } = await supabase
       .from('customers')
       .select('logo_url')
-      .eq('name', project.customer)
+      .ilike('name', project.customer) // Case-insensitive match is safer
       .maybeSingle()
+      
     if (customerData) logoUrl = customerData.logo_url
   }
 
+  // 3. Fetch Steps
   const { data: steps } = await supabase
     .from('process_steps')
-    .select(`*, special_characteristics (name, symbol_code, description)`)
+    .select(`
+      *,
+      special_characteristics (
+        name,
+        symbol_code,
+        description
+      )
+    `)
     .eq('project_id', id)
     .order('step_number', { ascending: true })
 
+  // 4. Fetch Library
   const { data: scLibrary } = await supabase.from('special_characteristics').select('*')
 
   return (
@@ -60,6 +80,7 @@ export default async function ProcessFlowPrintPage({
       {/* LOGO HEADER */}
       <div className="flex justify-between items-center mb-2">
          <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
+         {/* Pass the found URL explicitly */}
          <CustomerLogo customer={project.customer} logoUrl={logoUrl} />
       </div>
 
@@ -69,7 +90,11 @@ export default async function ProcessFlowPrintPage({
           Process and Inspection Flow Chart
         </div>
         <div className="grid grid-cols-5 divide-x divide-black text-center bg-gray-100 font-bold border-b border-black">
-          <div className="p-1">MODEL</div><div className="p-1">CUSTOMER</div><div className="p-1">PART NAME</div><div className="p-1">PART NO</div><div className="p-1">DOC. NO.</div>
+          <div className="p-1">MODEL</div>
+          <div className="p-1">CUSTOMER</div>
+          <div className="p-1">PART NAME</div>
+          <div className="p-1">PART NO</div>
+          <div className="p-1">DOC. NO.</div>
         </div>
         <div className="grid grid-cols-5 divide-x divide-black text-center">
           <div className="p-1">{project.model || '-'}</div>
