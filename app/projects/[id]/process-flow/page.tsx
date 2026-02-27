@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
-import { addProcessStep } from '@/app/actions'
-import ProcessStepRow from './ProcessStepRow' // Import the new component
+import { updateProcessStep, deleteProcessStep } from '@/app/actions'
+import ProcessStepRow from './ProcessStepRow'
+import AddStepForm from './AddStepForm' // Import New Component
 
 export default async function ProcessFlowPage({
   params,
@@ -17,7 +18,7 @@ export default async function ProcessFlowPage({
     .eq('project_id', id)
     .order('step_number', { ascending: true })
 
-  // 2. Fetch Special Characteristics Library for the dropdowns
+  // 2. Fetch Library
   const { data: scLibrary } = await supabase.from('special_characteristics').select('*')
 
   return (
@@ -37,59 +38,8 @@ export default async function ProcessFlowPage({
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         
-        {/* LEFT COLUMN: Add New Step Form */}
-        <div className="bg-white p-6 rounded-lg shadow h-fit border border-gray-200">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Add Process Step</h3>
-          <p className="text-xs text-gray-500 mb-4">
-            Define the process flow here. Select symbols and special characteristics if applicable.
-          </p>
-          <form action={addProcessStep} className="space-y-4">
-            <input type="hidden" name="project_id" value={id} />
-            
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase">Step No.</label>
-                <input name="step_number" required placeholder="10" className="mt-1 block w-full rounded border border-gray-300 p-2 text-sm" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase">Symbol</label>
-                <select name="symbol_type" className="mt-1 block w-full rounded border border-gray-300 p-2 text-sm bg-white">
-                  <option value="start">START</option>
-                  <option value="process">PROCESS</option>
-                  <option value="inspection">INSPECTION</option>
-                  <option value="inprocess">INPROCESS INSP</option>
-                  <option value="storage">STORAGE</option>
-                  <option value="delivery">DELIVERY/END</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase">Operation Description</label>
-              <input name="description" required placeholder="e.g. Injection Molding" className="mt-1 block w-full rounded border border-gray-300 p-2 text-sm" />
-            </div>
-
-            {/* Special Characteristic Dropdown */}
-            <div>
-               <label className="block text-xs font-bold text-gray-700 uppercase">Special Char.</label>
-               <select name="special_char_id" className="mt-1 block w-full rounded border border-gray-300 p-2 text-sm bg-white">
-                 <option value="">-- None --</option>
-                 {scLibrary?.map(sc => (
-                   <option key={sc.id} value={sc.id}>{sc.name} - {sc.description}</option>
-                 ))}
-               </select>
-            </div>
-            
-            <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase">Remarks / Freq</label>
-              <input name="remarks" placeholder="e.g. 100%" className="mt-1 block w-full rounded border border-gray-300 p-2 text-sm" />
-            </div>
-
-            <button className="w-full rounded bg-blue-600 px-3 py-2 text-sm font-bold text-white hover:bg-blue-500 shadow-sm">
-              Add Step +
-            </button>
-          </form>
-        </div>
+        {/* LEFT COLUMN: Add New Step Form (Client Component) */}
+        <AddStepForm projectId={id} />
 
         {/* RIGHT COLUMN: Editable List */}
         <div className="md:col-span-2 bg-white rounded-lg shadow overflow-hidden border border-gray-200">
