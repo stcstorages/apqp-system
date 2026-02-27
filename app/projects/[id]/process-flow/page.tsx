@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
-import { updateProcessStep, deleteProcessStep } from '@/app/actions'
 import ProcessStepRow from './ProcessStepRow'
-import AddStepForm from './AddStepForm' // Import New Component
+import AddStepForm from './AddStepForm'
+import ExportPdfButton from '@/app/components/ExportPdfButton'
 
 export default async function ProcessFlowPage({
   params,
@@ -24,16 +24,9 @@ export default async function ProcessFlowPage({
   return (
     <div className="space-y-6">
       
-      {/* Top Bar: PDF Export Button */}
+      {/* Top Bar: PDF Export Button (Client Component) */}
       <div className="flex justify-end">
-        <a 
-          href={`/print/process-flow/${id}`} 
-          target="_blank" 
-          className="inline-flex items-center gap-2 bg-gray-800 text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-700 transition"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-          Export to PDF
-        </a>
+        <ExportPdfButton url={`/print/process-flow/${id}`} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

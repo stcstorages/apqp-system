@@ -4,6 +4,7 @@ import SpecialSymbol from '@/app/components/SpecialSymbol'
 import RichText from '@/app/components/RichText'
 import CustomerLogo from '@/app/components/CustomerLogo'
 
+// Format Date Helper
 const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
@@ -21,7 +22,7 @@ export default async function ProcessFlowPrintPage({
   
   const { data: project } = await supabase.from('projects').select('*').eq('id', id).single()
   
-  // FIX: Use maybeSingle() to prevent crash if customer not found
+  // FIX: Use maybeSingle() instead of single() to avoid crash if customer/logo not found
   const { data: customerData } = await supabase
     .from('customers')
     .select('logo_url')
@@ -30,7 +31,14 @@ export default async function ProcessFlowPrintPage({
 
   const { data: steps } = await supabase
     .from('process_steps')
-    .select(`*, special_characteristics (name, symbol_code, description)`)
+    .select(`
+      *,
+      special_characteristics (
+        name,
+        symbol_code,
+        description
+      )
+    `)
     .eq('project_id', id)
     .order('step_number', { ascending: true })
 
@@ -58,7 +66,11 @@ export default async function ProcessFlowPrintPage({
           Process and Inspection Flow Chart
         </div>
         <div className="grid grid-cols-5 divide-x divide-black text-center bg-gray-100 font-bold border-b border-black">
-          <div className="p-1">MODEL</div><div className="p-1">CUSTOMER</div><div className="p-1">PART NAME</div><div className="p-1">PART NO</div><div className="p-1">DOC. NO.</div>
+          <div className="p-1">MODEL</div>
+          <div className="p-1">CUSTOMER</div>
+          <div className="p-1">PART NAME</div>
+          <div className="p-1">PART NO</div>
+          <div className="p-1">DOC. NO.</div>
         </div>
         <div className="grid grid-cols-5 divide-x divide-black text-center">
           <div className="p-1">{project.model || '-'}</div>
@@ -84,36 +96,59 @@ export default async function ProcessFlowPrintPage({
           {steps?.map((step, index) => {
             const isLast = index === (steps.length - 1);
             const isInspection = step.symbol_type === 'inspection';
+            
             return (
               <tr key={step.id}>
                 <td className="border border-black p-2 text-center font-bold align-middle">{step.step_number}</td>
-                <td className="border border-black p-2 uppercase align-middle break-words whitespace-normal"><RichText content={step.description} /></td>
+                
+                <td className="border border-black p-2 uppercase align-middle break-words whitespace-normal">
+                  <RichText content={step.description} />
+                </td>
+
                 <td className="border border-black p-0 h-[80px] align-middle relative overflow-visible">
-                   {index > 0 && <div className="absolute left-3/4 top-0 w-[1px] bg-black -translate-x-1/2 z-0" style={{ height: '50%' }}></div>}
-                   {!isLast && <div className="absolute left-3/4 top-1/2 w-[1px] bg-black -translate-x-1/2 z-0" style={{ height: '50%' }}></div>}
-                   {isInspection && !isLast && <div className="absolute left-[78%] bottom-[5%] text-[8px] font-bold bg-white px-0.5 z-20">OK</div>}
+                   {index > 0 && (
+                     <div className="absolute left-3/4 top-0 w-[1px] bg-black -translate-x-1/2 z-0" style={{ height: '50%' }}></div>
+                   )}
+                   {!isLast && (
+                     <div className="absolute left-3/4 top-1/2 w-[1px] bg-black -translate-x-1/2 z-0" style={{ height: '50%' }}></div>
+                   )}
+                   {isInspection && !isLast && (
+                      <div className="absolute left-[78%] bottom-[5%] text-[8px] font-bold bg-white px-0.5 z-20">OK</div>
+                   )}
                    {isInspection && (
                      <>
                         <div className="absolute top-1/2 left-[40px] right-[25%] h-[1px] bg-black z-0"></div>
                         <div className="absolute top-[35%] left-[65px] text-[8px] font-bold bg-white px-0.5 z-20">NG</div>
-                        <div className="absolute top-1/2 left-1 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-2 py-1 z-20 border border-black shadow-sm">REJECT</div>
+                        <div className="absolute top-1/2 left-1 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-2 py-1 z-20 border border-black shadow-sm">
+                          REJECT
+                        </div>
                      </>
                    )}
                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 pl-[50%]">
-                     <div className="bg-white p-1"><FlowSymbol type={step.symbol_type || 'process'} /></div>
+                     <div className="bg-white p-1">
+                        <FlowSymbol type={step.symbol_type || 'process'} />
+                     </div>
                    </div>
                 </td>
+
                 <td className="border border-black p-1 text-center align-middle">
-                  {step.special_characteristics && <div className="flex justify-center items-center"><SpecialSymbol code={step.special_characteristics.symbol_code} /></div>}
+                  {step.special_characteristics && (
+                    <div className="flex justify-center items-center">
+                       <SpecialSymbol code={step.special_characteristics.symbol_code} />
+                    </div>
+                  )}
                 </td>
-                <td className="border border-black p-2 align-top break-words whitespace-normal"><RichText content={step.remarks} /></td>
+                
+                <td className="border border-black p-2 align-top break-words whitespace-normal">
+                  <RichText content={step.remarks} />
+                </td>
               </tr>
             )
           })}
         </tbody>
       </table>
 
-      {/* FOOTER */}
+      {/* FOOTER LEGEND */}
       <div className="border border-black text-[10px] break-inside-avoid">
         <div className="grid grid-cols-3 divide-x divide-black border-b border-black">
           <div>
@@ -144,9 +179,12 @@ export default async function ProcessFlowPrintPage({
         </div>
         
         <div className="flex justify-between p-1 px-2 bg-gray-100 text-[9px]">
-           <div>ISSUE NO: 1</div><div>REVISION NO: 0</div><div>DATE: {formatDate(project.flow_date_orig)}</div>
+           <div>ISSUE NO: 1</div>
+           <div>REVISION NO: 0</div>
+           <div>DATE: {formatDate(project.flow_date_orig)}</div>
         </div>
       </div>
+
       <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
     </div>
   )

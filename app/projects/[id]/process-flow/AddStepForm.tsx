@@ -9,18 +9,15 @@ export default function AddStepForm({ projectId }: { projectId: string }) {
   const router = useRouter()
 
   const handleSubmit = async (formData: FormData) => {
-    setIsLoading(true)
+    setIsLoading(true) // Force UI update immediately
     try {
       await addProcessStep(formData)
-      // Reset form usually requires a ref or state, but for simplicity in server actions 
-      // we just stop loading. The page refresh clears inputs if we used defaultValue.
-      // To force clear, we can use a key or state, but let's stick to simple UX first.
-      router.refresh()
       
-      // Clear inputs manually by targeting the form
+      // Clear inputs manually
       const form = document.getElementById('add-step-form') as HTMLFormElement
-      if(form) form.reset()
-        
+      if (form) form.reset()
+      
+      router.refresh()
     } catch (e) {
       console.error(e)
       alert("Failed to save")
@@ -61,6 +58,9 @@ export default function AddStepForm({ projectId }: { projectId: string }) {
           <label className="block text-xs font-bold text-gray-700 uppercase">Operation Description</label>
           <input name="description" required placeholder="e.g. Injection Molding" className="mt-1 block w-full rounded border border-gray-300 p-2 text-sm" />
         </div>
+
+        {/* Note: Special Char Dropdown removed from ADD form to keep it simple, can edit later. Or add if needed. */}
+        {/* If you want SC in add form, tell me. For now, matching previous layout. */}
         
         <div>
           <label className="block text-xs font-bold text-gray-700 uppercase">Remarks / Freq</label>
@@ -70,7 +70,7 @@ export default function AddStepForm({ projectId }: { projectId: string }) {
         <button 
           type="submit" 
           disabled={isLoading}
-          className={`w-full rounded px-3 py-2 text-sm font-bold text-white shadow-sm flex justify-center items-center gap-2 ${isLoading ? 'bg-blue-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-500'}`}
+          className={`w-full rounded px-3 py-2 text-sm font-bold text-white shadow-sm flex justify-center items-center gap-2 ${isLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'}`}
         >
           {isLoading ? (
              <>
