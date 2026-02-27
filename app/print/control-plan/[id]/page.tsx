@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import SpecialSymbol from '@/app/components/SpecialSymbol'
 import CustomerLogo from '@/app/components/CustomerLogo'
 
-// Format Date Helper (DD-MMM-YYYY)
+// Format Date Helper
 const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
@@ -18,8 +18,17 @@ export default async function ControlPlanPrintPage({
   const { id } = await params
   const supabase = await createClient()
 
+  // 1. Fetch Project
   const { data: project } = await supabase.from('projects').select('*').eq('id', id).single()
 
+  // 2. Fetch Customer Logo URL
+  const { data: customerData } = await supabase
+    .from('customers')
+    .select('logo_url')
+    .eq('name', project.customer)
+    .single()
+
+  // 3. Fetch Data
   const { data: steps } = await supabase
     .from('process_steps')
     .select(`*, pfmea_records (*, control_plan_records (*), special_characteristics(symbol_code))`)
@@ -40,7 +49,7 @@ export default async function ControlPlanPrintPage({
       {/* LOGO HEADER */}
       <div className="flex justify-between items-center mb-2">
          <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
-         <CustomerLogo customer={project.customer} />
+         <CustomerLogo customer={project.customer} logoUrl={customerData?.logo_url} />
       </div>
 
       {/* AIAG HEADER */}
@@ -58,76 +67,24 @@ export default async function ControlPlanPrintPage({
         <div className="border border-black flex">
            {/* Left Block */}
            <div className="w-1/3 border-r border-black">
-              <div className="border-b border-black p-1 h-8">
-                 <div className="text-[8px] text-gray-500">Control Plan Number</div>
-                 <div>{project.cp_number || '-'}</div>
-              </div>
-              <div className="border-b border-black p-1 h-14">
-                 <div className="text-[8px] text-gray-500">Part Number/Latest Change Level</div>
-                 <div>{project.part_number}</div>
-              </div>
-              <div className="border-b border-black p-1 h-8">
-                 <div className="text-[8px] text-gray-500">Part Name/Description</div>
-                 <div>{project.name}</div>
-              </div>
-              <div className="flex h-8">
-                 <div className="w-1/2 border-r border-black p-1">
-                    <div className="text-[8px] text-gray-500">Supplier/Plant</div>
-                    <div>Internal</div>
-                 </div>
-                 <div className="w-1/2 p-1">
-                    <div className="text-[8px] text-gray-500">Supplier Code</div>
-                    <div>-</div>
-                 </div>
-              </div>
+              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Control Plan Number</div><div>{project.cp_number || '-'}</div></div>
+              <div className="border-b border-black p-1 h-14"><div className="text-[8px] text-gray-500">Part Number/Latest Change Level</div><div>{project.part_number}</div></div>
+              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Part Name/Description</div><div>{project.name}</div></div>
+              <div className="flex h-8"><div className="w-1/2 border-r border-black p-1"><div className="text-[8px] text-gray-500">Supplier/Plant</div><div>Internal</div></div><div className="w-1/2 p-1"><div className="text-[8px] text-gray-500">Supplier Code</div><div>-</div></div></div>
            </div>
-
            {/* Middle Block */}
            <div className="w-1/3 border-r border-black">
-              <div className="border-b border-black p-1 h-8">
-                 <div className="text-[8px] text-gray-500">Key Contact/Phone</div>
-                 <div>{project.key_contact || '-'}</div>
-              </div>
-              <div className="border-b border-black p-1 h-14 overflow-hidden">
-                 <div className="text-[8px] text-gray-500">Core Team</div>
-                 <div className="text-[9px] leading-tight break-words whitespace-normal">
-                    {project.core_team || '-'}
-                 </div>
-              </div>
-              <div className="border-b border-black p-1 h-8">
-                 <div className="text-[8px] text-gray-500">Supplier/Plant Approval/Date</div>
-                 <div>-</div>
-              </div>
-              <div className="p-1 h-8">
-                 <div className="text-[8px] text-gray-500">Other Approval/Date</div>
-                 <div>{formatDate(project.other_approval)}</div>
-              </div>
+              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Key Contact/Phone</div><div>{project.key_contact || '-'}</div></div>
+              <div className="border-b border-black p-1 h-14 overflow-hidden"><div className="text-[8px] text-gray-500">Core Team</div><div className="text-[9px] leading-tight break-words whitespace-normal">{project.core_team || '-'}</div></div>
+              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Supplier/Plant Approval/Date</div><div>-</div></div>
+              <div className="p-1 h-8"><div className="text-[8px] text-gray-500">Other Approval/Date</div><div>{formatDate(project.other_approval)}</div></div>
            </div>
-
            {/* Right Block */}
            <div className="w-1/3">
-              <div className="border-b border-black flex h-8">
-                 <div className="w-1/2 border-r border-black p-1">
-                    <div className="text-[8px] text-gray-500">Date (Orig.)</div>
-                    <div>{formatDate(project.cp_date_orig)}</div>
-                 </div>
-                 <div className="w-1/2 p-1">
-                    <div className="text-[8px] text-gray-500">Date (Rev.)</div>
-                    <div>{formatDate(project.cp_date_rev)}</div>
-                 </div>
-              </div>
-              <div className="border-b border-black p-1 h-14">
-                 <div className="text-[8px] text-gray-500">Customer Engineering Approval/Date</div>
-                 <div>{formatDate(project.customer_eng_approval)}</div>
-              </div>
-              <div className="border-b border-black p-1 h-8">
-                 <div className="text-[8px] text-gray-500">Customer Quality Approval/Date</div>
-                 <div>{formatDate(project.customer_quality_approval)}</div>
-              </div>
-              <div className="p-1 h-8">
-                 <div className="text-[8px] text-gray-500">Other Approval/Date</div>
-                 <div>{formatDate(project.other_approval)}</div>
-              </div>
+              <div className="border-b border-black flex h-8"><div className="w-1/2 border-r border-black p-1"><div className="text-[8px] text-gray-500">Date (Orig.)</div><div>{formatDate(project.cp_date_orig)}</div></div><div className="w-1/2 p-1"><div className="text-[8px] text-gray-500">Date (Rev.)</div><div>{formatDate(project.cp_date_rev)}</div></div></div>
+              <div className="border-b border-black p-1 h-14"><div className="text-[8px] text-gray-500">Customer Engineering Approval/Date</div><div>{formatDate(project.customer_eng_approval)}</div></div>
+              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Customer Quality Approval/Date</div><div>{formatDate(project.customer_quality_approval)}</div></div>
+              <div className="p-1 h-8"><div className="text-[8px] text-gray-500">Other Approval/Date</div><div>{formatDate(project.other_approval)}</div></div>
            </div>
         </div>
       </div>
@@ -169,15 +126,9 @@ export default async function ControlPlanPrintPage({
                <tr key={cp.id || `${step.id}-${index}`}>
                  {index === 0 && (
                    <>
-                     <td className="border border-black p-1 text-center align-top font-bold bg-gray-50" rowSpan={cpRows.length}>
-                       {step.step_number}
-                     </td>
-                     <td className="border border-black p-1 align-top uppercase" rowSpan={cpRows.length}>
-                       {step.description}
-                     </td>
-                     <td className="border border-black p-1 align-top" rowSpan={cpRows.length}>
-                       {step.machine_tools}
-                     </td>
+                     <td className="border border-black p-1 text-center align-top font-bold bg-gray-50" rowSpan={cpRows.length}>{step.step_number}</td>
+                     <td className="border border-black p-1 align-top uppercase" rowSpan={cpRows.length}>{step.description}</td>
+                     <td className="border border-black p-1 align-top" rowSpan={cpRows.length}>{step.machine_tools}</td>
                    </>
                  )}
                  <td className="border border-black p-1 text-center">{index + 1}</td>
