@@ -4,7 +4,7 @@ import React from 'react'
 export default function CustomerLogo({ customer }: { customer: string }) {
   const c = customer?.toLowerCase() || ''
 
-  // Logic to find the right logo filename
+  // 1. Map Customer Names to Filenames in 'public/logos'
   let logoSrc = ''
   if (c.includes('proton')) logoSrc = '/logos/proton.png'
   else if (c.includes('perodua')) logoSrc = '/logos/perodua.png'
@@ -13,18 +13,21 @@ export default function CustomerLogo({ customer }: { customer: string }) {
   else if (c.includes('mitsubishi')) logoSrc = '/logos/mitsubishi.png'
   else if (c.includes('kayaba')) logoSrc = '/logos/kayaba.png'
   
-  // If we have a match, show the image. Otherwise show text.
+  // 2. If a matching logo is found, show the IMAGE
   if (logoSrc) {
-    // UNCOMMENT THIS LINE WHEN YOU HAVE REAL IMAGES IN public/logos/ folder
-    // return <img src={logoSrc} alt={customer} className="h-12 w-auto object-contain" />
-    
-    // Placeholder until you have images:
     return (
-      <div className="h-12 px-4 border-2 border-gray-300 border-dashed flex items-center justify-center text-xs font-bold text-gray-400 uppercase">
-        {customer} Logo
-      </div>
+      <img 
+        src={logoSrc} 
+        alt={customer} 
+        className="h-12 w-auto object-contain" 
+      />
     )
   }
 
-  return <span className="text-sm font-bold">{customer}</span>
+  // 3. Fallback: If no image found, show text
+  return (
+    <div className="h-12 px-4 border border-gray-300 flex items-center justify-center text-xs font-bold text-gray-400 uppercase">
+      {customer || 'No Logo'}
+    </div>
+  )
 }
