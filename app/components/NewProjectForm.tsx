@@ -13,26 +13,19 @@ export default function NewProjectForm({ existingCustomers }: Props) {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
-  // This function handles the "Create Project" submission
   const handleSubmit = async (formData: FormData) => {
-    // 1. Start Animation immediately
     setIsLoading(true)
-    
     try {
-      // 2. Call Server Action
       const result = await createProject(formData)
       
       if (result && result.error) {
         alert("Database Error: " + result.error)
-        setIsLoading(false) // Stop animation on error
+        setIsLoading(false)
       } 
       else if (result && result.success) {
          if (result.newProjectId) {
-             // 3. Success! Redirect to the new project. 
-             // We keep isLoading=true so it keeps spinning while the browser navigates.
              router.push(`/projects/${result.newProjectId}`)
          } else {
-             // Template creation (stay on page)
              setIsLoading(false)
              router.refresh()
          }
@@ -48,7 +41,6 @@ export default function NewProjectForm({ existingCustomers }: Props) {
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <h2 className="text-lg font-bold text-gray-900 mb-6 border-b pb-2">Create New Project</h2>
       
-      {/* Ensure action is set to handleSubmit */}
       <form action={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
         {/* 1. Project Name */}
@@ -108,42 +100,52 @@ export default function NewProjectForm({ existingCustomers }: Props) {
               </button>
             </div>
           ) : (
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 p-2 bg-blue-50 border border-blue-200 rounded">
                <input 
                  id="new-customer-input"
                  name="new_customer_name" 
                  autoFocus
-                 placeholder="New Customer Name" 
-                 className="w-full border border-blue-500 rounded p-2 text-sm bg-blue-50" 
+                 placeholder="Name (e.g. Chery)" 
+                 className="w-full border border-blue-300 rounded p-1.5 text-sm bg-blue-50" 
                />
-               <button 
-                  type="button"
-                  onClick={async () => {
-                     const input = document.getElementById('new-customer-input') as HTMLInputElement;
-                     if(input.value) {
-                         const fd = new FormData();
-                         fd.append('new_customer_name', input.value);
-                         const res = await addCustomer(fd);
-                         if(res?.error) alert(res.error);
-                         else setIsAddingCustomer(false);
-                     }
-                  }}
-                  className="bg-green-600 text-white px-3 rounded hover:bg-green-500 text-xs font-bold"
-               >
-                 SAVE
-               </button>
-               <button 
-                 type="button" 
-                 onClick={() => setIsAddingCustomer(false)}
-                 className="bg-red-100 text-red-600 border border-red-200 px-2 rounded hover:bg-red-200"
-               >
-                 ✕
-               </button>
+               <input 
+                 id="new-customer-logo"
+                 name="new_customer_logo" 
+                 placeholder="Logo Path (e.g. /logos/chery.png)" 
+                 className="w-full border border-blue-300 rounded p-1.5 text-xs text-gray-600" 
+               />
+               <div className="flex gap-2">
+                 <button 
+                    type="button"
+                    onClick={async () => {
+                       const nameInput = document.getElementById('new-customer-input') as HTMLInputElement;
+                       const logoInput = document.getElementById('new-customer-logo') as HTMLInputElement;
+                       if(nameInput.value) {
+                           const fd = new FormData();
+                           fd.append('new_customer_name', nameInput.value);
+                           fd.append('new_customer_logo', logoInput.value);
+                           const res = await addCustomer(fd);
+                           if(res?.error) alert(res.error);
+                           else setIsAddingCustomer(false);
+                       }
+                    }}
+                    className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-500 text-xs font-bold flex-1"
+                 >
+                   SAVE
+                 </button>
+                 <button 
+                   type="button" 
+                   onClick={() => setIsAddingCustomer(false)}
+                   className="bg-red-100 text-red-600 border border-red-200 px-3 py-1 rounded hover:bg-red-200 text-xs font-bold"
+                 >
+                   CANCEL
+                 </button>
+               </div>
+               <p className="text-[9px] text-gray-500">* Put image file in public/logos folder first</p>
             </div>
           )}
         </div>
 
-        {/* SUBMIT BUTTON WITH SPINNER */}
         <div className="md:col-span-2 lg:col-span-3 flex justify-end mt-2">
            <button 
              type="submit" 
@@ -156,7 +158,6 @@ export default function NewProjectForm({ existingCustomers }: Props) {
            >
              {isLoading ? (
                <>
-                 {/* Spinner SVG */}
                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>

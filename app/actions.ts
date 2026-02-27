@@ -73,10 +73,9 @@ export async function createProject(formData: FormData) {
     is_template: is_template_creation
   }).select().single()
 
-  // FIX: Handle potential null error safely
   if (projError || !newProject) { 
     console.error('Error creating project:', projError)
-    return { error: projError?.message || 'Failed to create project data' }
+    return { error: projError.message }
   }
 
   // Template Copying Logic
@@ -161,10 +160,14 @@ export async function createProject(formData: FormData) {
 export async function addCustomer(formData: FormData) {
   const supabase = await createClient()
   const name = formData.get('new_customer_name') as string
+  const logo = formData.get('new_customer_logo') as string
 
   if (!name) return { error: "Name is empty" }
 
-  const { error } = await supabase.from('customers').insert({ name })
+  const { error } = await supabase.from('customers').insert({ 
+    name,
+    logo_url: logo || null 
+  })
 
   if (error) {
     console.error('Error adding customer:', error)
@@ -262,31 +265,14 @@ export async function addFmeaRow(formData: FormData) {
   const stepId = formData.get('step_id') as string
   const projectId = formData.get('project_id') as string
   
-  // Explicit Extraction
-  const failure_mode = formData.get('failure_mode') as string
-  const failure_effect = formData.get('failure_effect') as string
-  const severity = parseInt(formData.get('severity') as string) || 0
-  const specialCharId = formData.get('special_char_id') as string || null
-  const cause = formData.get('cause') as string
-  const control_prevention = formData.get('control_prevention') as string
-  const occurrence = parseInt(formData.get('occurrence') as string) || 0
-  const current_controls = formData.get('current_controls') as string
-  const detection = parseInt(formData.get('detection') as string) || 0
-  const recommended_actions = formData.get('recommended_actions') as string
-  const responsibility = formData.get('responsibility') as string
-  const action_taken = formData.get('action_taken') as string
-  const act_severity = parseInt(formData.get('act_severity') as string) || null
-  const act_occurrence = parseInt(formData.get('act_occurrence') as string) || null
-  const act_detection = parseInt(formData.get('act_detection') as string) || null
-
-  await supabase.from('pfmea_records').insert({
-    step_id: stepId,
-    failure_mode, failure_effect, severity, special_char_id: specialCharId,
-    cause, control_prevention, occurrence, current_controls, detection,
-    recommended_actions, responsibility, action_taken,
-    act_severity, act_occurrence, act_detection
+  const data: any = {}
+  formData.forEach((value, key) => { if(key !== 'project_id') data[key] = value === '' ? null : value })
+  
+  ['severity','occurrence','detection','act_severity','act_occurrence','act_detection'].forEach(k => {
+     if(data[k]) data[k] = parseInt(data[k])
   })
 
+  await supabase.from('pfmea_records').insert(data)
   revalidatePath(`/projects/${projectId}/fmea`)
 }
 
@@ -295,30 +281,14 @@ export async function updateFmeaRow(formData: FormData) {
   const id = formData.get('row_id') as string
   const projectId = formData.get('project_id') as string
   
-  // Explicit Extraction
-  const failure_mode = formData.get('failure_mode') as string
-  const failure_effect = formData.get('failure_effect') as string
-  const severity = parseInt(formData.get('severity') as string) || 0
-  const specialCharId = formData.get('special_char_id') as string || null
-  const cause = formData.get('cause') as string
-  const control_prevention = formData.get('control_prevention') as string
-  const occurrence = parseInt(formData.get('occurrence') as string) || 0
-  const current_controls = formData.get('current_controls') as string
-  const detection = parseInt(formData.get('detection') as string) || 0
-  const recommended_actions = formData.get('recommended_actions') as string
-  const responsibility = formData.get('responsibility') as string
-  const action_taken = formData.get('action_taken') as string
-  const act_severity = parseInt(formData.get('act_severity') as string) || null
-  const act_occurrence = parseInt(formData.get('act_occurrence') as string) || null
-  const act_detection = parseInt(formData.get('act_detection') as string) || null
+  const data: any = {}
+  formData.forEach((value, key) => { if(key !== 'row_id' && key !== 'project_id') data[key] = value === '' ? null : value })
 
-  await supabase.from('pfmea_records').update({
-    failure_mode, failure_effect, severity, special_char_id: specialCharId,
-    cause, control_prevention, occurrence, current_controls, detection,
-    recommended_actions, responsibility, action_taken,
-    act_severity, act_occurrence, act_detection
-  }).eq('id', id)
+  ['severity','occurrence','detection','act_severity','act_occurrence','act_detection'].forEach(k => {
+     if(data[k]) data[k] = parseInt(data[k])
+  })
 
+  await supabase.from('pfmea_records').update(data).eq('id', id)
   revalidatePath(`/projects/${projectId}/fmea`)
 }
 
@@ -367,12 +337,14 @@ export async function addGanttTask(formData: FormData) {
   let start = formData.get('start_date') as string
   let end = formData.get('end_date') as string
 
+  // Handle Default Dates for Headers
   if (type === 'project' && (!start || !end)) {
     const today = new Date().toISOString()
     start = today
     end = today
   }
 
+  // Find Max Order
   const { data: maxOrder } = await supabase
     .from('gantt_tasks')
     .select('order_index')
