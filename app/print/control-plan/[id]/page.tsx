@@ -9,64 +9,61 @@ const formatDate = (dateStr: string | null | undefined) => {
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-const getSymbolCode = (scData: any) => {
-  if (!scData) return null
-  if (Array.isArray(scData)) return scData[0]?.symbol_code || null
-  return scData?.symbol_code || null
-}
-
 export default async function ControlPlanPrintPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
 
-  // 1. Safe Project Fetch
-  const { data: project } = await supabase.from('projects').select('*').eq('id', id).maybeSingle()
-  if (!project) return <div>Project not found.</div>
+  // 1. Safe Project
+  const { data: project, error: projError } = await supabase.from('projects').select('*').eq('id', id).single()
+  if (projError || !project) return <div>Error: Project not found.</div>
 
-  // 2. Fetch Data
+  // 2. Safe Logo
+  let logoUrl = null
+  if (project.customer) {
+    const { data: customerData } = await supabase.from('customers').select('logo_url').eq('name', project.customer).maybeSingle()
+    logoUrl = customerData?.logo_url
+  }
+
+  // 3. Safe Data Fetch (No deep nested join on SC)
   const { data: steps } = await supabase
     .from('process_steps')
-    .select(`*, pfmea_records (*, control_plan_records (*), special_characteristics(symbol_code))`)
+    .select(`*, pfmea_records (*, control_plan_records (*))`)
     .eq('project_id', id)
     .order('step_number', { ascending: true })
 
+  // 4. Fetch Library
+  const { data: scLibrary } = await supabase.from('special_characteristics').select('*')
+
   return (
     <div className="min-h-screen bg-white text-black p-4 print-container">
-      <style>{`@media print { @page { size: landscape; margin: 5mm; } body { -webkit-print-color-adjust: exact; } table { font-size: 9px; } .print-border-black { border-color: #000 !important; } }`}</style>
+      <style>{`@media print { @page { size: landscape; margin: 5mm; } body { -webkit-print-color-adjust: exact; } .print-border-black { border-color: #000 !important; } table { font-size: 9px; } }`}</style>
 
       {/* HEADER */}
       <div className="flex justify-between items-center mb-2">
          <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
-         <CustomerLogo customer={project.customer || ''} />
+         <CustomerLogo customer={project.customer || ''} logoUrl={logoUrl} />
       </div>
 
-      <div className="border border-black mb-2 text-xs">
-        <div className="font-bold text-center p-2 border-b border-black bg-gray-100">CONTROL PLAN ({project.cp_phase || 'General'})</div>
-        <div className="flex p-2 text-[9px] gap-8">
-           <div className="w-1/2">
-             <div><strong>No:</strong> {project.cp_number || '-'}</div>
-             <div><strong>Part:</strong> {project.part_number} - {project.name}</div>
-             <div><strong>Supplier:</strong> Internal</div>
-           </div>
-           <div className="w-1/2">
-             <div><strong>Contact:</strong> {project.key_contact || '-'}</div>
-             <div><strong>Date:</strong> {formatDate(project.cp_date_orig)} (Rev: {formatDate(project.cp_date_rev)})</div>
-             <div><strong>Core Team:</strong> {project.core_team || '-'}</div>
-           </div>
-        </div>
+      <div className="mb-2 text-xs border border-black p-1">
+          <div className="font-bold text-center">CONTROL PLAN</div>
+          <div className="grid grid-cols-3 gap-4 text-[9px] mt-2">
+             <div>CP No: {project.cp_number}</div>
+             <div>Part: {project.part_number}</div>
+             <div>Date: {formatDate(project.cp_date_orig)}</div>
+          </div>
       </div>
 
       {/* TABLE */}
       <table className="w-full border-collapse border border-black">
-        <thead className="bg-gray-200 font-bold">
-          <tr>
+        <thead>
+          <tr className="bg-gray-200 font-bold">
             <th className="border border-black p-1 w-8">No</th>
             <th className="border border-black p-1">Process</th>
             <th className="border border-black p-1 w-24">Machine</th>
             <th className="border border-black p-1 w-6">#</th>
             <th className="border border-black p-1">Product</th>
             <th className="border border-black p-1">Process</th>
-            <th className="border border-black p-1 w-8">SC</th>
+            <th className="border border-black p-1 w-8">Class</th>
             <th className="border border-black p-1 w-16">Spec</th>
             <th className="border border-black p-1 w-16">Eval</th>
             <th className="border border-black p-1 w-8">Size</th>
@@ -80,7 +77,10 @@ export default async function ControlPlanPrintPage({ params }: { params: Promise
           {(steps || []).map((step) => {
              const cpRows: any[] = [];
              step.pfmea_records?.forEach((risk: any) => {
-                const symbolCode = getSymbolCode(risk?.special_characteristics);
+                // Find symbol manually in JS
+                const sc = scLibrary?.find((x: any) => x.id === risk.special_char_id)
+                const symbolCode = sc?.symbol_code
+
                 risk.control_plan_records?.forEach((cp: any) => {
                     cpRows.push({ ...cp, symbolCode });
                 });

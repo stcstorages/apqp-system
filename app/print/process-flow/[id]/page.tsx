@@ -4,74 +4,60 @@ import SpecialSymbol from '@/app/components/SpecialSymbol'
 import RichText from '@/app/components/RichText'
 import CustomerLogo from '@/app/components/CustomerLogo'
 
-const formatDate = (dateStr: string | null | undefined) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  if (isNaN(date.getTime())) return '-'
-  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')
-}
-
-const getSymbolCode = (scData: any) => {
-  if (!scData) return null
-  if (Array.isArray(scData)) {
-    return scData.length > 0 ? scData[0].symbol_code : null
-  }
-  return scData?.symbol_code || null
-}
-
-export default async function ProcessFlowPrintPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
+export default async function ProcessFlowPrintPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
   
+  // 1. Fetch Project
   const { data: project, error: projError } = await supabase.from('projects').select('*').eq('id', id).single()
   
   if (projError || !project) {
-    return <div className="p-10 text-red-600">Error loading project: {projError?.message}</div>
+    return (
+      <div className="p-8 text-red-600 bg-red-50 border border-red-200 m-4 rounded">
+        <h2 className="font-bold text-lg mb-2">PDF Generation Error</h2>
+        <p>Could not load project data.</p>
+        <p className="text-xs font-mono mt-2">{projError?.message || 'Project ID not found'}</p>
+      </div>
+    )
+  }
+  
+  // 2. Fetch Logo (Safe)
+  let logoUrl = null
+  if (project.customer) {
+    const { data: customerData } = await supabase.from('customers').select('logo_url').eq('name', project.customer).maybeSingle()
+    logoUrl = customerData?.logo_url
   }
 
-  // NOTE: Removed the Customer Table fetch. 
-  // The Logo component now handles it automatically based on project.customer string.
-
+  // 3. Fetch Steps (NO JOIN - Safe Fetch)
   const { data: steps } = await supabase
     .from('process_steps')
-    .select(`*, special_characteristics (name, symbol_code, description)`)
+    .select('*')
     .eq('project_id', id)
     .order('step_number', { ascending: true })
 
+  // 4. Fetch Library (Separate Fetch)
+  const { data: scLibrary } = await supabase.from('special_characteristics').select('*')
+
   return (
     <div className="min-h-screen bg-white text-black p-4 text-xs font-sans print-container">
-      <style>{`
-        @media print {
-          @page { margin: 10mm; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .print-border-black { border-color: #000 !important; }
-        }
-      `}</style>
+      <style>{`@media print { @page { margin: 10mm; } body { -webkit-print-color-adjust: exact; } .print-border-black { border-color: #000 !important; } }`}</style>
 
-      {/* LOGO HEADER */}
+      {/* HEADER */}
       <div className="flex justify-between items-center mb-2">
          <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
-         {/* Pass only the name */}
-         <CustomerLogo customer={project.customer} />
+         <CustomerLogo customer={project.customer || ''} logoUrl={logoUrl} />
       </div>
 
-      {/* DOCUMENT HEADER */}
       <div className="border border-black mb-1">
-        <div className="border-b border-black font-bold text-lg text-center p-2 uppercase">
-          Process and Inspection Flow Chart
-        </div>
+        <div className="border-b border-black font-bold text-lg text-center p-2 uppercase">Process and Inspection Flow Chart</div>
         <div className="grid grid-cols-5 divide-x divide-black text-center bg-gray-100 font-bold border-b border-black">
           <div className="p-1">MODEL</div><div className="p-1">CUSTOMER</div><div className="p-1">PART NAME</div><div className="p-1">PART NO</div><div className="p-1">DOC. NO.</div>
         </div>
         <div className="grid grid-cols-5 divide-x divide-black text-center">
           <div className="p-1">{project.model || '-'}</div>
-          <div className="p-1">{project.customer}</div>
-          <div className="p-1">{project.name}</div>
-          <div className="p-1">{project.part_number}</div>
+          <div className="p-1">{project.customer || '-'}</div>
+          <div className="p-1">{project.name || '-'}</div>
+          <div className="p-1">{project.part_number || '-'}</div>
           <div className="p-1">{project.flow_number || '-'}</div>
         </div>
       </div>
@@ -91,12 +77,15 @@ export default async function ProcessFlowPrintPage({
           {(steps || []).map((step, index) => {
             const isLast = index === ((steps?.length || 1) - 1);
             const isInspection = step.symbol_type === 'inspection';
-            const symbolCode = getSymbolCode(step.special_characteristics);
+            
+            // Safe Lookup in JS instead of DB Join
+            const sc = scLibrary?.find((x: any) => x.id === step.special_char_id);
+            const symbolCode = sc?.symbol_code;
 
             return (
               <tr key={step.id}>
                 <td className="border border-black p-2 text-center font-bold align-middle">{step.step_number}</td>
-                <td className="border border-black p-2 uppercase align-middle break-words whitespace-normal"><RichText content={step.description} /></td>
+                <td className="border border-black p-2 uppercase align-middle break-words whitespace-normal"><RichText content={step.description || ''} /></td>
                 <td className="border border-black p-0 h-[80px] align-middle relative overflow-visible">
                    {index > 0 && <div className="absolute left-3/4 top-0 w-[1px] bg-black -translate-x-1/2 z-0" style={{ height: '50%' }}></div>}
                    {!isLast && <div className="absolute left-3/4 top-1/2 w-[1px] bg-black -translate-x-1/2 z-0" style={{ height: '50%' }}></div>}
@@ -115,13 +104,45 @@ export default async function ProcessFlowPrintPage({
                 <td className="border border-black p-1 text-center align-middle">
                   {symbolCode && <div className="flex justify-center items-center"><SpecialSymbol code={symbolCode} /></div>}
                 </td>
-                <td className="border border-black p-2 align-top break-words whitespace-normal"><RichText content={step.remarks} /></td>
+                <td className="border border-black p-2 align-top break-words whitespace-normal"><RichText content={step.remarks || ''} /></td>
               </tr>
             )
           })}
         </tbody>
       </table>
-      <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
+
+      {/* FOOTER */}
+      <div className="border border-black text-[10px] break-inside-avoid">
+        <div className="grid grid-cols-3 divide-x divide-black border-b border-black">
+          <div>
+             <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">PROCESS SYMBOLS</div>
+             <div className="grid grid-cols-2 gap-1 p-2">
+                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="start"/></div> Start/End</div>
+                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="process"/></div> Process</div>
+                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="inspection"/></div> Insp.</div>
+                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="storage"/></div> Storage</div>
+                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="transport"/></div> Delivery</div>
+             </div>
+          </div>
+          <div>
+             <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">KEY CHARACTERISTICS</div>
+             <div className="p-2 space-y-1">
+               {(scLibrary || []).map((sc: any) => (
+                 <div key={sc.id} className="flex justify-between items-center border-b border-gray-100 last:border-0">
+                    <span>{sc.name}</span><SpecialSymbol code={sc.symbol_code} />
+                 </div>
+               ))}
+             </div>
+          </div>
+          <div className="flex flex-col">
+             <div className="grid grid-cols-3 divide-x divide-black bg-gray-100 font-bold text-center border-b border-black"><div className="p-1">PREP</div><div className="p-1">CHECK</div><div className="p-1">APPR</div></div>
+             <div className="grid grid-cols-3 divide-x divide-black flex-1 min-h-[60px]"><div></div><div></div><div></div></div>
+          </div>
+        </div>
+        <div className="flex justify-between p-1 px-2 bg-gray-100 text-[9px]">
+           <div>ISSUE NO: 1</div><div>REVISION NO: 0</div><div>DATE: {project.flow_date_orig || '-'}</div>
+        </div>
+      </div>
     </div>
   )
 }
