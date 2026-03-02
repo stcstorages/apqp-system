@@ -11,241 +11,126 @@ const getWeekNumber = (d: Date) => {
 }
 
 const getGroupColor = (index: number) => {
-  const colors = [
-    { bar: 'bg-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-    { bar: 'bg-blue-500', bg: 'bg-blue-50', border: 'border-blue-200' },
-    { bar: 'bg-purple-500', bg: 'bg-purple-50', border: 'border-purple-200' },
-    { bar: 'bg-amber-500', bg: 'bg-amber-50', border: 'border-amber-200' },
-    { bar: 'bg-rose-500', bg: 'bg-rose-50', border: 'border-rose-200' },
-  ]
-  return colors[index % colors.length]
+  const colors = [ 'bg-emerald-500', 'bg-blue-500', 'bg-purple-500', 'bg-amber-500', 'bg-rose-500' ]
+  return { bar: colors[index % colors.length] }
 }
 
 const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return '-'
-  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')
+  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
 }
 
-export default async function GanttPrintPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
+export default async function GanttPrintPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
 
-  // 1. Safe Project Fetch
-  const { data: project, error: projError } = await supabase.from('projects').select('*').eq('id', id).single()
+  // 1. Safe Project
+  const { data: project } = await supabase.from('projects').select('*').eq('id', id).maybeSingle()
+  if (!project) return <div>Project not found.</div>
 
-  if (projError || !project) {
-     return <div className="p-10 text-red-600 font-bold">Error loading project: {projError?.message}</div>
-  }
-
-  // 2. Safe Logo Fetch
-  let logoUrl = null
-  if (project.customer) {
-    const { data: customerData } = await supabase.from('customers').select('logo_url').eq('name', project.customer).maybeSingle()
-    if (customerData) logoUrl = customerData.logo_url
-  }
-  
-  // 3. Fetch Tasks
+  // 2. Fetch Tasks
   const { data: rawTasks } = await supabase.from('gantt_tasks').select('*').eq('project_id', id).order('order_index', { ascending: true })
+  const tasks = rawTasks || []
 
-  const processedTasks = rawTasks?.map(t => ({ ...t })) || []
-  
-  // Logic: Recalculate Headers
-  if (processedTasks.length > 0) {
-    const headerIndices: number[] = []
-    processedTasks.forEach((t, i) => { if (t.type === 'project') headerIndices.push(i) })
-    headerIndices.forEach((headerIndex, i) => {
-      const nextHeaderIndex = headerIndices[i + 1] || processedTasks.length
-      const children = processedTasks.slice(headerIndex + 1, nextHeaderIndex)
-      if (children.length > 0) {
-         let minStart = new Date(children[0].start_date).getTime()
-         let maxEnd = new Date(children[0].end_date).getTime()
-         children.forEach(child => {
-            const s = new Date(child.start_date).getTime()
-            const e = new Date(child.end_date).getTime()
-            if (!isNaN(s) && s < minStart) minStart = s
-            if (!isNaN(e) && e > maxEnd) maxEnd = e
-         })
-         processedTasks[headerIndex].start_date = new Date(minStart).toISOString()
-         processedTasks[headerIndex].end_date = new Date(maxEnd).toISOString()
-      }
+  // 3. Calc Bounds
+  let minDate = new Date(); let maxDate = new Date();
+  if (tasks.length > 0) {
+    minDate = new Date(tasks[0].start_date)
+    maxDate = new Date(tasks[0].end_date)
+    tasks.forEach(t => {
+       const s = new Date(t.start_date); const e = new Date(t.end_date);
+       if(!isNaN(s.getTime()) && s < minDate) minDate = s;
+       if(!isNaN(e.getTime()) && e > maxDate) maxDate = e;
     })
   }
-
-  // Bounds
-  let minDate = new Date()
-  let maxDate = new Date()
-  
-  if (processedTasks.length > 0) {
-    minDate = new Date(processedTasks[0].start_date)
-    maxDate = new Date(processedTasks[0].end_date)
-    
-    processedTasks.forEach(t => {
-      const s = new Date(t.start_date)
-      const e = new Date(t.end_date)
-      if (!isNaN(s.getTime()) && s < minDate) minDate = s
-      if (!isNaN(e.getTime()) && e > maxDate) maxDate = e
-    })
-  } else {
-    minDate = new Date()
-    maxDate = new Date()
-    maxDate.setDate(maxDate.getDate() + 30)
-  }
-
   minDate.setDate(minDate.getDate() - 7)
   maxDate.setDate(maxDate.getDate() + 21)
-
+  
   const totalDuration = Math.max(1, maxDate.getTime() - minDate.getTime())
 
+  // Generate Weeks
   const weeks = []
-  const tempDate = new Date(minDate)
-  const day = tempDate.getDay() || 7
-  if (day !== 1) tempDate.setHours(-24 * (day - 1))
+  const temp = new Date(minDate)
+  while(temp < maxDate) { weeks.push(new Date(temp)); temp.setDate(temp.getDate() + 7); }
 
-  while (tempDate < maxDate) {
-    weeks.push(new Date(tempDate))
-    tempDate.setDate(tempDate.getDate() + 7)
+  const getPos = (dStr: string) => {
+     const d = new Date(dStr); if(isNaN(d.getTime())) return 0;
+     return ((d.getTime() - minDate.getTime()) / totalDuration) * 100
+  }
+  const getWidth = (sStr: string, eStr: string) => {
+     const s = new Date(sStr); const e = new Date(eStr);
+     if(isNaN(s.getTime()) || isNaN(e.getTime())) return 0;
+     return ((e.getTime() - s.getTime() + 86400000) / totalDuration) * 100
   }
 
-  const getPos = (dateStr: string) => {
-    const d = new Date(dateStr)
-    if(isNaN(d.getTime())) return 0
-    return ((d.getTime() - minDate.getTime()) / totalDuration) * 100
-  }
-  const getWidth = (startStr: string, endStr: string) => {
-      const s = new Date(startStr); const e = new Date(endStr);
-      if(isNaN(s.getTime()) || isNaN(e.getTime())) return 0
-      const durationMs = e.getTime() - s.getTime()
-      const adjustedDuration = durationMs === 0 ? 0 : durationMs + 86400000 
-      return (adjustedDuration / totalDuration) * 100
-  }
-  
-  let currentGroupIndex = 0
-  let currentParentId = null
+  let groupIdx = 0;
 
   return (
     <div className="min-h-screen bg-white text-gray-800 text-[10px] font-sans">
       <PrintControls />
-      <style>{`
-        @media print { 
-          .no-break { break-inside: avoid; } 
-          table, td, th { border: none !important; }
-        }
-      `}</style>
+      <style>{`@media print { .no-break { break-inside: avoid; } table, td, th { border: none !important; } }`}</style>
 
       {/* HEADER */}
       <div className="flex justify-between items-end mb-2 border-b-2 border-gray-200 pb-1">
          <div>
-            <div className="flex items-center gap-2 mb-0">
-                <div className="font-bold text-lg italic text-blue-900">SIB APQP</div>
-                <div className="text-gray-400">|</div>
-                <div className="text-md font-bold text-gray-700">Project Schedule</div>
-            </div>
-            <div className="text-[10px] text-gray-500">
-                {project.customer} • {project.model} • {project.part_name}
-            </div>
+            <div className="font-bold text-lg text-blue-900">SIB APQP - Schedule</div>
+            <div className="text-[10px] text-gray-500">{project.customer} • {project.model} • {project.part_name}</div>
          </div>
-         <div className="scale-75 origin-right">
-             <CustomerLogo customer={project.customer || ''} logoUrl={logoUrl} />
-         </div>
+         <CustomerLogo customer={project.customer || ''} />
       </div>
 
-      {/* MAIN CONTENT */}
-      <div className="flex border border-gray-200 rounded-lg overflow-hidden text-[9px]">
-        {/* LEFT LIST */}
-        <div className="w-[280px] flex-shrink-0 bg-white border-r border-gray-200 z-20 shadow-lg">
-          <div className="h-6 bg-gray-50 border-b border-gray-200 flex items-end px-2 pb-1 font-bold text-gray-500 uppercase tracking-wider">
-            <div className="flex-1">Task Name</div><div className="w-10 text-right">Dur.</div>
-          </div>
-          <div className="bg-white">
-            {processedTasks?.map((task) => {
-               if (task.type === 'project') { currentGroupIndex++; currentParentId = task.id }
-               const colorTheme = getGroupColor(currentGroupIndex)
-               const isHeader = task.type === 'project'
-               const isChild = !!task.parent_id
-               const s = new Date(task.start_date); const e = new Date(task.end_date);
-               const days = !isNaN(s.getTime()) && !isNaN(e.getTime()) ? Math.ceil((e.getTime() - s.getTime()) / (1000 * 3600 * 24)) : 0
-
-               return (
-                 <div key={task.id} className={`h-5 flex items-center px-2 border-b border-gray-50 ${isHeader ? 'bg-gray-100 font-bold text-gray-800' : 'text-gray-600'}`}>
-                    <div className={`w-1 h-3 rounded-full mr-2 ${isHeader ? 'bg-gray-400' : colorTheme.bar}`}></div>
-                    <div className={`flex-1 truncate ${isChild ? 'pl-3' : ''}`}>{task.name}</div>
-                    <div className="w-10 text-right text-gray-400 text-[8px]">{days}d</div>
-                 </div>
-               )
-            })}
-          </div>
-        </div>
-
-        {/* RIGHT CHART */}
-        <div className="flex-1 relative overflow-hidden bg-white">
-          <div className="h-6 bg-gray-50 border-b border-gray-200 relative whitespace-nowrap overflow-hidden">
-            {weeks.map((w, i) => {
-              const left = getPos(w.toISOString())
-              const isNewMonth = i === 0 || w.getDate() < 8
+      {/* CHART */}
+      <div className="flex border border-gray-200 rounded text-[9px]">
+        <div className="w-[250px] border-r border-gray-200">
+           <div className="h-6 bg-gray-50 border-b flex items-end px-2 font-bold"><div className="flex-1">Task</div><div className="w-8">Dur</div></div>
+           {tasks.map(t => {
+              if(t.type === 'project') groupIdx++;
+              const isHeader = t.type === 'project';
+              const s = new Date(t.start_date); const e = new Date(t.end_date);
+              const dur = (!isNaN(s.getTime()) && !isNaN(e.getTime())) ? Math.ceil((e.getTime() - s.getTime()) / 86400000) : 0;
               return (
-                <div key={i} className="absolute top-0 bottom-0 border-l border-gray-200 pl-1" style={{ left: `${left}%` }}>
-                   {isNewMonth && <div className="text-[9px] font-bold text-gray-800 uppercase absolute top-0 left-1">{w.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}</div>}
-                   <div className="absolute bottom-0 text-[8px] text-gray-400">W{getWeekNumber(w)}</div>
+                <div key={t.id} className={`h-5 flex items-center px-2 border-b ${isHeader ? 'bg-gray-100 font-bold' : ''}`}>
+                   <div className="flex-1 truncate pl-2">{t.name}</div>
+                   <div className="w-8 text-right">{dur}d</div>
                 </div>
               )
-            })}
-          </div>
-          <div className="absolute top-6 bottom-0 left-0 right-0 z-0">
-             {weeks.map((w, i) => {
-               // FIX IS HERE: Defined 'left'
-               const left = getPos(w.toISOString())
-               return <div key={i} className="absolute top-0 bottom-0 border-l border-gray-100 h-full" style={{ left: `${left}%` }}></div>
-             })}
-             <div className="absolute top-0 bottom-0 border-l-2 border-blue-400 opacity-30 z-0" style={{ left: `${getPos(new Date().toISOString())}%` }}></div>
-          </div>
-          <div className="relative z-10 pt-[0px]">
-             {(() => {
-                currentGroupIndex = 0
-                return processedTasks?.map((task) => {
-                   if (task.type === 'project') currentGroupIndex++
-                   const colorTheme = getGroupColor(currentGroupIndex)
-                   const isHeader = task.type === 'project'
-                   const isMilestone = task.type === 'milestone'
-                   const left = getPos(task.start_date)
-                   const width = getWidth(task.start_date, task.end_date)
-                   
-                   return (
-                     <div key={task.id} className={`h-5 relative w-full ${isHeader ? 'border-b border-gray-100/50' : ''}`}>
-                        {isHeader && (
-                          <div className="absolute top-1.5 h-2.5 bg-gray-200/50 rounded-r-md border-l-4 border-gray-500" style={{ left: `${left}%`, width: `${width}%` }}>
-                             <span className="absolute left-full ml-1 top-0 text-[8px] font-bold text-gray-600 whitespace-nowrap">{task.name}</span>
-                          </div>
-                        )}
-                        {isMilestone && (
-                          <>
-                             <div className="absolute top-1.5 w-2.5 h-2.5 bg-amber-400 border border-white shadow-sm transform rotate-45 z-20" style={{ left: `${left}%`, marginLeft: '-5px' }}></div>
-                             <div className="absolute top-0.5 text-[8px] font-bold text-gray-600 whitespace-nowrap z-20" style={{ left: `${left}%`, marginLeft: '8px' }}>{task.name}</div>
-                          </>
-                        )}
-                        {!isHeader && !isMilestone && (
-                          <>
-                            <div className={`absolute top-1.5 h-2.5 rounded-full shadow-sm flex items-center overflow-hidden ${colorTheme.bar} bg-opacity-30 border ${colorTheme.border}`} style={{ left: `${left}%`, width: `${Math.max(width, 0.5)}%` }}>
-                               <div className={`h-full ${colorTheme.bar}`} style={{ width: `${task.progress}%` }}></div>
-                            </div>
-                            <div className="absolute top-1 text-[8px] text-gray-500 whitespace-nowrap flex items-center gap-1" style={{ left: `calc(${left}% + ${Math.max(width, 0.5)}% + 4px)` }}>
-                               <span className="text-gray-400">{task.progress}%</span>
-                            </div>
-                          </>
-                        )}
-                     </div>
-                   )
-                })
-             })()}
-          </div>
+           })}
+        </div>
+        
+        <div className="flex-1 relative overflow-hidden">
+           <div className="h-6 bg-gray-50 border-b relative whitespace-nowrap">
+              {weeks.map((w, i) => (
+                <div key={i} className="absolute border-l border-gray-200 pl-1 h-full" style={{ left: `${getPos(w.toISOString())}%` }}>
+                   W{getWeekNumber(w)}
+                </div>
+              ))}
+           </div>
+           <div className="relative pt-[0px]">
+              {(() => {
+                 groupIdx = 0;
+                 return tasks.map(t => {
+                    if(t.type === 'project') groupIdx++;
+                    const color = getGroupColor(groupIdx).bar;
+                    const left = getPos(t.start_date);
+                    const width = getWidth(t.start_date, t.end_date);
+                    const isHeader = t.type === 'project';
+                    
+                    return (
+                      <div key={t.id} className={`h-5 relative w-full ${isHeader ? 'border-b border-gray-100' : ''}`}>
+                         {isHeader ? (
+                            <div className="absolute top-1.5 h-2.5 bg-gray-400 rounded" style={{ left: `${left}%`, width: `${width}%` }}></div>
+                         ) : (
+                            <div className={`absolute top-1.5 h-2.5 rounded ${color} opacity-80`} style={{ left: `${left}%`, width: `${width}%` }}></div>
+                         )}
+                      </div>
+                    )
+                 })
+              })()}
+           </div>
         </div>
       </div>
-      <div className="mt-2 text-center text-gray-400 text-[8px]">Generated by SIB APQP System • {formatDate(new Date().toISOString())}</div>
     </div>
   )
 }
