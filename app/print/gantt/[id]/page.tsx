@@ -2,7 +2,6 @@ import { createClient } from '@/utils/supabase/server'
 import CustomerLogo from '@/app/components/CustomerLogo'
 import PrintControls from '@/app/components/PrintControls'
 
-// Helper: Get ISO Week Number
 const getWeekNumber = (d: Date) => {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
@@ -10,10 +9,9 @@ const getWeekNumber = (d: Date) => {
   return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 }
 
-// Helper: Modern Color Palette
 const getGroupColor = (index: number) => {
   const colors = [
-    { bar: 'bg-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-200' }, 
+    { bar: 'bg-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-200' },
     { bar: 'bg-blue-500', bg: 'bg-blue-50', border: 'border-blue-200' },
     { bar: 'bg-purple-500', bg: 'bg-purple-50', border: 'border-purple-200' },
     { bar: 'bg-amber-500', bg: 'bg-amber-50', border: 'border-amber-200' },
@@ -22,7 +20,6 @@ const getGroupColor = (index: number) => {
   return colors[index % colors.length]
 }
 
-// Helper: Date Format DD-MMM-YYYY
 const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
@@ -38,60 +35,46 @@ export default async function GanttPrintPage({
   const { id } = await params
   const supabase = await createClient()
 
-  // 1. Safe Project Fetch
+  // 1. Safe Project
   const { data: project, error: projError } = await supabase.from('projects').select('*').eq('id', id).single()
-  
-  if (projError || !project) {
-     return <div className="p-10 text-red-600 font-bold">Error loading project: {projError?.message}</div>
-  }
 
-  // 2. Safe Logo Fetch
+  if (projError || !project) return <div className="p-4 text-red-600">Error: Project not found.</div>
+
+  // 2. Safe Logo
   let logoUrl = null
   if (project.customer) {
-    const { data: customerData } = await supabase
-      .from('customers')
-      .select('logo_url')
-      .eq('name', project.customer)
-      .maybeSingle()
+    const { data: customerData } = await supabase.from('customers').select('logo_url').eq('name', project.customer).maybeSingle()
     if (customerData) logoUrl = customerData.logo_url
   }
   
   // 3. Fetch Tasks
-  const { data: rawTasks } = await supabase
-    .from('gantt_tasks')
-    .select('*')
-    .eq('project_id', id)
-    .order('order_index', { ascending: true })
+  const { data: rawTasks } = await supabase.from('gantt_tasks').select('*').eq('project_id', id).order('order_index', { ascending: true })
 
-  // --- LOGIC: DYNAMICALLY RECALCULATE HEADERS ---
   const processedTasks = rawTasks?.map(t => ({ ...t })) || []
   
+  // Recalculate Headers logic (Simplified for brevity, same as before)
   if (processedTasks.length > 0) {
     const headerIndices: number[] = []
     processedTasks.forEach((t, i) => { if (t.type === 'project') headerIndices.push(i) })
-
     headerIndices.forEach((headerIndex, i) => {
       const nextHeaderIndex = headerIndices[i + 1] || processedTasks.length
       const children = processedTasks.slice(headerIndex + 1, nextHeaderIndex)
-      
       if (children.length > 0) {
          let minStart = new Date(children[0].start_date).getTime()
          let maxEnd = new Date(children[0].end_date).getTime()
-         
          children.forEach(child => {
             const s = new Date(child.start_date).getTime()
             const e = new Date(child.end_date).getTime()
             if (s < minStart) minStart = s
             if (e > maxEnd) maxEnd = e
          })
-         
          processedTasks[headerIndex].start_date = new Date(minStart).toISOString()
          processedTasks[headerIndex].end_date = new Date(maxEnd).toISOString()
       }
     })
   }
 
-  // --- CALCULATE BOUNDS ---
+  // --- SAFE TIMELINE BOUNDS ---
   let minDate = new Date()
   let maxDate = new Date()
   
@@ -102,15 +85,20 @@ export default async function GanttPrintPage({
     processedTasks.forEach(t => {
       const s = new Date(t.start_date)
       const e = new Date(t.end_date)
-      if (s < minDate) minDate = s
-      if (e > maxDate) maxDate = e
+      if (!isNaN(s.getTime()) && s < minDate) minDate = s
+      if (!isNaN(e.getTime()) && e > maxDate) maxDate = e
     })
+  } else {
+    // Fallback if no tasks
+    minDate = new Date()
+    maxDate = new Date()
+    maxDate.setDate(maxDate.getDate() + 30)
   }
 
   minDate.setDate(minDate.getDate() - 7)
   maxDate.setDate(maxDate.getDate() + 21)
 
-  const totalDuration = maxDate.getTime() - minDate.getTime()
+  const totalDuration = Math.max(1, maxDate.getTime() - minDate.getTime())
 
   const weeks = []
   const tempDate = new Date(minDate)
@@ -155,76 +143,50 @@ export default async function GanttPrintPage({
             </div>
          </div>
          <div className="scale-75 origin-right">
-             <CustomerLogo customer={project.customer} logoUrl={logoUrl} />
+             <CustomerLogo customer={project.customer || ''} logoUrl={logoUrl} />
          </div>
       </div>
 
-      {/* MAIN LAYOUT */}
+      {/* MAIN CONTENT */}
       <div className="flex border border-gray-200 rounded-lg overflow-hidden text-[9px]">
-        {/* LEFT SIDE: TASK LIST */}
+        {/* LEFT TASK LIST */}
         <div className="w-[280px] flex-shrink-0 bg-white border-r border-gray-200 z-20 shadow-lg">
           <div className="h-6 bg-gray-50 border-b border-gray-200 flex items-end px-2 pb-1 font-bold text-gray-500 uppercase tracking-wider">
-            <div className="flex-1">Task Name</div>
-            <div className="w-10 text-right">Dur.</div>
+            <div className="flex-1">Task Name</div><div className="w-10 text-right">Dur.</div>
           </div>
-          
           <div className="bg-white">
             {processedTasks?.map((task) => {
-               if (task.type === 'project') {
-                 currentGroupIndex++
-                 currentParentId = task.id
-               }
+               if (task.type === 'project') { currentGroupIndex++; currentParentId = task.id }
                const colorTheme = getGroupColor(currentGroupIndex)
                const isHeader = task.type === 'project'
                const isChild = !!task.parent_id
-
                return (
-                 <div 
-                    key={task.id} 
-                    className={`h-5 flex items-center px-2 border-b border-gray-50 ${isHeader ? 'bg-gray-100 font-bold text-gray-800' : 'text-gray-600'}`}
-                 >
+                 <div key={task.id} className={`h-5 flex items-center px-2 border-b border-gray-50 ${isHeader ? 'bg-gray-100 font-bold text-gray-800' : 'text-gray-600'}`}>
                     <div className={`w-1 h-3 rounded-full mr-2 ${isHeader ? 'bg-gray-400' : colorTheme.bar}`}></div>
-                    <div className={`flex-1 truncate ${isChild ? 'pl-3' : ''}`}>
-                       {task.name}
-                    </div>
-                    <div className="w-10 text-right text-gray-400 text-[8px]">
-                       {Math.ceil((new Date(task.end_date).getTime() - new Date(task.start_date).getTime()) / (1000 * 3600 * 24))}d
-                    </div>
+                    <div className={`flex-1 truncate ${isChild ? 'pl-3' : ''}`}>{task.name}</div>
+                    <div className="w-10 text-right text-gray-400 text-[8px]">{Math.ceil((new Date(task.end_date).getTime() - new Date(task.start_date).getTime()) / (1000 * 3600 * 24))}d</div>
                  </div>
                )
             })}
           </div>
         </div>
 
-        {/* RIGHT SIDE: TIMELINE */}
+        {/* RIGHT TIMELINE */}
         <div className="flex-1 relative overflow-hidden bg-white">
           <div className="h-6 bg-gray-50 border-b border-gray-200 relative whitespace-nowrap overflow-hidden">
             {weeks.map((w, i) => {
               const left = getPos(w.toISOString())
-              const isNewMonth = i === 0 || w.getDate() < 8
               return (
                 <div key={i} className="absolute top-0 bottom-0 border-l border-gray-200 pl-1" style={{ left: `${left}%` }}>
-                   {isNewMonth && (
-                     <div className="text-[9px] font-bold text-gray-800 uppercase absolute top-0 left-1">
-                       {w.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
-                     </div>
-                   )}
-                   <div className="absolute bottom-0 text-[8px] text-gray-400">W{getWeekNumber(w)}</div>
+                   <div className="text-[9px] font-bold text-gray-800 uppercase absolute top-0 left-1">{w.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
                 </div>
               )
             })}
           </div>
-
           <div className="absolute top-6 bottom-0 left-0 right-0 z-0">
-             {weeks.map((w, i) => {
-               const left = getPos(w.toISOString())
-               return (
-                 <div key={i} className="absolute top-0 bottom-0 border-l border-gray-100 h-full" style={{ left: `${left}%` }}></div>
-               )
-             })}
+             {weeks.map((w, i) => <div key={i} className="absolute top-0 bottom-0 border-l border-gray-100 h-full" style={{ left: `${left}%` }}></div>)}
              <div className="absolute top-0 bottom-0 border-l-2 border-blue-400 opacity-30 z-0" style={{ left: `${getPos(new Date().toISOString())}%` }}></div>
           </div>
-
           <div className="relative z-10 pt-[0px]">
              {(() => {
                 currentGroupIndex = 0
@@ -233,10 +195,8 @@ export default async function GanttPrintPage({
                    const colorTheme = getGroupColor(currentGroupIndex)
                    const isHeader = task.type === 'project'
                    const isMilestone = task.type === 'milestone'
-
                    const left = getPos(task.start_date)
                    const width = getWidth(task.start_date, task.end_date)
-                   
                    return (
                      <div key={task.id} className={`h-5 relative w-full ${isHeader ? 'border-b border-gray-100/50' : ''}`}>
                         {isHeader && (
@@ -267,9 +227,7 @@ export default async function GanttPrintPage({
           </div>
         </div>
       </div>
-      <div className="mt-2 text-center text-gray-400 text-[8px]">
-         Generated by SIB APQP System • {formatDate(new Date().toISOString())}
-      </div>
+      <div className="mt-2 text-center text-gray-400 text-[8px]">Generated by SIB APQP System • {formatDate(new Date().toISOString())}</div>
     </div>
   )
 }
