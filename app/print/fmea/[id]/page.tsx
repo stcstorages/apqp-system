@@ -26,12 +26,14 @@ export default async function FmeaPrintPage({
   const { id } = await params
   const supabase = await createClient()
 
+  // 1. Safe Project Fetch
   const { data: project, error: projError } = await supabase.from('projects').select('*').eq('id', id).single()
 
   if (projError || !project) {
-     return <div className="p-10 text-red-600">Error loading project: {projError?.message}</div>
+     return <div className="p-10 text-red-600 font-bold">Error loading project: {projError?.message || 'Project not found'}</div>
   }
 
+  // 2. Safe Logo Fetch
   let logoUrl = null
   if (project.customer) {
     const { data: customerData } = await supabase
@@ -59,15 +61,13 @@ export default async function FmeaPrintPage({
         }
       `}</style>
 
-      {/* LOGO */}
+      {/* LOGO HEADER */}
       <div className="flex justify-between items-center mb-2">
          <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
          <CustomerLogo customer={project.customer} logoUrl={logoUrl} />
       </div>
-      
-      {/* ... (Rest of FMEA header and table code - same as previous version but now safe from crashes) ... */}
-      {/* I will paste the header and table below to be 100% complete */}
 
+      {/* HEADER TABLE */}
       <div className="mb-2 text-xs">
         <div className="font-bold text-lg text-center mb-4 uppercase">
           Potential Failure Mode and Effects Analysis (Process FMEA)
@@ -100,6 +100,7 @@ export default async function FmeaPrintPage({
         </div>
       </div>
 
+      {/* MAIN TABLE */}
       <table className="w-full border-collapse border border-black">
         <thead>
           <tr className="bg-gray-100 text-center font-bold">
@@ -109,15 +110,19 @@ export default async function FmeaPrintPage({
             <th className="border border-black p-1 w-6" rowSpan={2}>Sev</th>
             <th className="border border-black p-1 w-6" rowSpan={2}>Cls</th>
             <th className="border border-black p-1" rowSpan={2}>Potential Cause(s)</th>
+            
             <th className="border border-black p-1" rowSpan={2}>Current Process Control<br/>Prevention</th>
             <th className="border border-black p-1 w-6" rowSpan={2}>Occ</th>
             <th className="border border-black p-1" rowSpan={2}>Current Process Control<br/>Detection</th>
             <th className="border border-black p-1 w-6" rowSpan={2}>Det</th>
             <th className="border border-black p-1 w-8" rowSpan={2}>RPN</th>
+            
             <th className="border border-black p-1" rowSpan={2}>Recommended Action(s)</th>
             <th className="border border-black p-1" rowSpan={2}>Responsibility &<br/>Target Date</th>
+            
             <th className="border border-black p-1" colSpan={5}>Action Results</th>
           </tr>
+          
           <tr className="bg-gray-100 text-center font-bold">
             <th className="border border-black p-1">Actions Taken</th>
             <th className="border border-black p-1 w-6">S</th>
@@ -126,9 +131,11 @@ export default async function FmeaPrintPage({
             <th className="border border-black p-1 w-8">RPN</th>
           </tr>
         </thead>
+        
         <tbody>
-          {steps?.map((step) => {
+          {(steps || []).map((step) => {
              const rows = step.pfmea_records.length > 0 ? step.pfmea_records : [{}];
+             
              return rows.map((risk: any, index: number) => {
                // Safe Symbol Logic
                const symbolCode = getSymbolCode(risk.special_characteristics)
@@ -147,14 +154,18 @@ export default async function FmeaPrintPage({
                    <td className="border border-black p-1 text-center align-top">{risk.occurrence || ''}</td>
                    <td className="border border-black p-1 align-top">{risk.current_controls || '-'}</td>
                    <td className="border border-black p-1 text-center align-top">{risk.detection || ''}</td>
-                   <td className="border border-black p-1 text-center font-bold bg-gray-50 align-top">{(risk.severity * risk.occurrence * risk.detection) || ''}</td>
+                   <td className="border border-black p-1 text-center font-bold bg-gray-50 align-top">
+                      {(risk.severity * risk.occurrence * risk.detection) || ''}
+                   </td>
                    <td className="border border-black p-1 align-top">{risk.recommended_actions || '-'}</td>
                    <td className="border border-black p-1 align-top">{risk.responsibility || '-'}</td>
                    <td className="border border-black p-1 align-top">{risk.action_taken || '-'}</td>
                    <td className="border border-black p-1 text-center align-top">{risk.act_severity || ''}</td>
                    <td className="border border-black p-1 text-center align-top">{risk.act_occurrence || ''}</td>
                    <td className="border border-black p-1 text-center align-top">{risk.act_detection || ''}</td>
-                   <td className="border border-black p-1 text-center font-bold align-top">{(risk.act_severity * risk.act_occurrence * risk.act_detection) || ''}</td>
+                   <td className="border border-black p-1 text-center font-bold align-top">
+                      {(risk.act_severity * risk.act_occurrence * risk.act_detection) || ''}
+                   </td>
                  </tr>
                )
              });

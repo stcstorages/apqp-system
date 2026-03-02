@@ -13,11 +13,11 @@ const getWeekNumber = (d: Date) => {
 // Helper: Modern Color Palette
 const getGroupColor = (index: number) => {
   const colors = [
-    { bar: 'bg-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-200' }, // Green
-    { bar: 'bg-blue-500', bg: 'bg-blue-50', border: 'border-blue-200' },       // Blue
-    { bar: 'bg-purple-500', bg: 'bg-purple-50', border: 'border-purple-200' },   // Purple
-    { bar: 'bg-amber-500', bg: 'bg-amber-50', border: 'border-amber-200' },      // Orange
-    { bar: 'bg-rose-500', bg: 'bg-rose-50', border: 'border-rose-200' },         // Red
+    { bar: 'bg-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-200' }, 
+    { bar: 'bg-blue-500', bg: 'bg-blue-50', border: 'border-blue-200' },
+    { bar: 'bg-purple-500', bg: 'bg-purple-50', border: 'border-purple-200' },
+    { bar: 'bg-amber-500', bg: 'bg-amber-50', border: 'border-amber-200' },
+    { bar: 'bg-rose-500', bg: 'bg-rose-50', border: 'border-rose-200' },
   ]
   return colors[index % colors.length]
 }
@@ -38,14 +38,14 @@ export default async function GanttPrintPage({
   const { id } = await params
   const supabase = await createClient()
 
-  // 1. Fetch Project with safe fail
+  // 1. Safe Project Fetch
   const { data: project, error: projError } = await supabase.from('projects').select('*').eq('id', id).single()
-
+  
   if (projError || !project) {
-     return <div className="p-10 text-red-600">Error loading project: {projError?.message}</div>
+     return <div className="p-10 text-red-600 font-bold">Error loading project: {projError?.message}</div>
   }
 
-  // 2. Fetch Customer Logo (FIXED: maybeSingle)
+  // 2. Safe Logo Fetch
   let logoUrl = null
   if (project.customer) {
     const { data: customerData } = await supabase
@@ -56,14 +56,14 @@ export default async function GanttPrintPage({
     if (customerData) logoUrl = customerData.logo_url
   }
   
-  // 3. Fetch Tasks (Sorted by Order)
+  // 3. Fetch Tasks
   const { data: rawTasks } = await supabase
     .from('gantt_tasks')
     .select('*')
     .eq('project_id', id)
     .order('order_index', { ascending: true })
 
-  // --- LOGIC: DYNAMICALLY RECALCULATE HEADERS FOR PRINT ---
+  // --- LOGIC: DYNAMICALLY RECALCULATE HEADERS ---
   const processedTasks = rawTasks?.map(t => ({ ...t })) || []
   
   if (processedTasks.length > 0) {
@@ -91,7 +91,7 @@ export default async function GanttPrintPage({
     })
   }
 
-  // --- CALCULATE TIMELINE BOUNDS ---
+  // --- CALCULATE BOUNDS ---
   let minDate = new Date()
   let maxDate = new Date()
   
@@ -107,16 +107,13 @@ export default async function GanttPrintPage({
     })
   }
 
-  // Add buffer
   minDate.setDate(minDate.getDate() - 7)
   maxDate.setDate(maxDate.getDate() + 21)
 
   const totalDuration = maxDate.getTime() - minDate.getTime()
 
-  // --- GENERATE WEEK COLUMNS ---
   const weeks = []
   const tempDate = new Date(minDate)
-  // Align to Monday
   const day = tempDate.getDay() || 7
   if (day !== 1) tempDate.setHours(-24 * (day - 1))
 
@@ -128,7 +125,6 @@ export default async function GanttPrintPage({
   const getPos = (dateStr: string) => ((new Date(dateStr).getTime() - minDate.getTime()) / totalDuration) * 100
   const getWidth = (startStr: string, endStr: string) => {
       const durationMs = new Date(endStr).getTime() - new Date(startStr).getTime()
-      // Add 1 day buffer (inclusive)
       const adjustedDuration = durationMs === 0 ? 0 : durationMs + 86400000 
       return (adjustedDuration / totalDuration) * 100
   }
@@ -138,11 +134,7 @@ export default async function GanttPrintPage({
 
   return (
     <div className="min-h-screen bg-white text-gray-800 text-[10px] font-sans">
-      
-      {/* 1. PRINT CONTROLS */}
       <PrintControls />
-
-      {/* Local Styles */}
       <style>{`
         @media print { 
           .no-break { break-inside: avoid; } 
@@ -169,7 +161,6 @@ export default async function GanttPrintPage({
 
       {/* MAIN LAYOUT */}
       <div className="flex border border-gray-200 rounded-lg overflow-hidden text-[9px]">
-        
         {/* LEFT SIDE: TASK LIST */}
         <div className="w-[280px] flex-shrink-0 bg-white border-r border-gray-200 z-20 shadow-lg">
           <div className="h-6 bg-gray-50 border-b border-gray-200 flex items-end px-2 pb-1 font-bold text-gray-500 uppercase tracking-wider">
@@ -207,13 +198,10 @@ export default async function GanttPrintPage({
 
         {/* RIGHT SIDE: TIMELINE */}
         <div className="flex-1 relative overflow-hidden bg-white">
-          
-          {/* Timeline Header (Reduced Height: h-6) */}
           <div className="h-6 bg-gray-50 border-b border-gray-200 relative whitespace-nowrap overflow-hidden">
             {weeks.map((w, i) => {
               const left = getPos(w.toISOString())
               const isNewMonth = i === 0 || w.getDate() < 8
-              
               return (
                 <div key={i} className="absolute top-0 bottom-0 border-l border-gray-200 pl-1" style={{ left: `${left}%` }}>
                    {isNewMonth && (
@@ -221,18 +209,15 @@ export default async function GanttPrintPage({
                        {w.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
                      </div>
                    )}
-                   <div className="absolute bottom-0 text-[8px] text-gray-400">
-                     W{getWeekNumber(w)}
-                   </div>
+                   <div className="absolute bottom-0 text-[8px] text-gray-400">W{getWeekNumber(w)}</div>
                 </div>
               )
             })}
           </div>
 
-          {/* Grid Background */}
           <div className="absolute top-6 bottom-0 left-0 right-0 z-0">
              {weeks.map((w, i) => {
-               const left = getPos(w.toISOString()) // FIXED: Definition added here
+               const left = getPos(w.toISOString())
                return (
                  <div key={i} className="absolute top-0 bottom-0 border-l border-gray-100 h-full" style={{ left: `${left}%` }}></div>
                )
@@ -240,7 +225,6 @@ export default async function GanttPrintPage({
              <div className="absolute top-0 bottom-0 border-l-2 border-blue-400 opacity-30 z-0" style={{ left: `${getPos(new Date().toISOString())}%` }}></div>
           </div>
 
-          {/* Bars Layer */}
           <div className="relative z-10 pt-[0px]">
              {(() => {
                 currentGroupIndex = 0
@@ -255,50 +239,23 @@ export default async function GanttPrintPage({
                    
                    return (
                      <div key={task.id} className={`h-5 relative w-full ${isHeader ? 'border-b border-gray-100/50' : ''}`}>
-                        
-                        {/* Header Bar */}
                         {isHeader && (
-                          <div 
-                            className="absolute top-1.5 h-2.5 bg-gray-200/50 rounded-r-md border-l-4 border-gray-500"
-                            style={{ left: `${left}%`, width: `${width}%` }}
-                          >
-                             <span className="absolute left-full ml-1 top-0 text-[8px] font-bold text-gray-600 whitespace-nowrap">
-                               {task.name}
-                             </span>
+                          <div className="absolute top-1.5 h-2.5 bg-gray-200/50 rounded-r-md border-l-4 border-gray-500" style={{ left: `${left}%`, width: `${width}%` }}>
+                             <span className="absolute left-full ml-1 top-0 text-[8px] font-bold text-gray-600 whitespace-nowrap">{task.name}</span>
                           </div>
                         )}
-
-                        {/* Milestone */}
                         {isMilestone && (
                           <>
-                             <div 
-                               className="absolute top-1.5 w-2.5 h-2.5 bg-amber-400 border border-white shadow-sm transform rotate-45 z-20"
-                               style={{ left: `${left}%`, marginLeft: '-5px' }}
-                             ></div>
-                             <div 
-                               className="absolute top-0.5 text-[8px] font-bold text-gray-600 whitespace-nowrap z-20"
-                               style={{ left: `${left}%`, marginLeft: '8px' }}
-                             >
-                               {task.name}
-                             </div>
+                             <div className="absolute top-1.5 w-2.5 h-2.5 bg-amber-400 border border-white shadow-sm transform rotate-45 z-20" style={{ left: `${left}%`, marginLeft: '-5px' }}></div>
+                             <div className="absolute top-0.5 text-[8px] font-bold text-gray-600 whitespace-nowrap z-20" style={{ left: `${left}%`, marginLeft: '8px' }}>{task.name}</div>
                           </>
                         )}
-
-                        {/* Standard Task Bar */}
                         {!isHeader && !isMilestone && (
                           <>
-                            <div 
-                              className={`absolute top-1.5 h-2.5 rounded-full shadow-sm flex items-center overflow-hidden ${colorTheme.bar} bg-opacity-30 border ${colorTheme.border}`}
-                              style={{ left: `${left}%`, width: `${Math.max(width, 0.5)}%` }}
-                            >
+                            <div className={`absolute top-1.5 h-2.5 rounded-full shadow-sm flex items-center overflow-hidden ${colorTheme.bar} bg-opacity-30 border ${colorTheme.border}`} style={{ left: `${left}%`, width: `${Math.max(width, 0.5)}%` }}>
                                <div className={`h-full ${colorTheme.bar}`} style={{ width: `${task.progress}%` }}></div>
                             </div>
-                            
-                            {/* Label Next to Bar */}
-                            <div 
-                              className="absolute top-1 text-[8px] text-gray-500 whitespace-nowrap flex items-center gap-1"
-                              style={{ left: `calc(${left}% + ${Math.max(width, 0.5)}% + 4px)` }}
-                            >
+                            <div className="absolute top-1 text-[8px] text-gray-500 whitespace-nowrap flex items-center gap-1" style={{ left: `calc(${left}% + ${Math.max(width, 0.5)}% + 4px)` }}>
                                <span className="text-gray-400">{task.progress}%</span>
                             </div>
                           </>
@@ -308,14 +265,11 @@ export default async function GanttPrintPage({
                 })
              })()}
           </div>
-
         </div>
       </div>
-      
       <div className="mt-2 text-center text-gray-400 text-[8px]">
-         Generated by SIB APQP System • {new Date().toLocaleDateString()}
+         Generated by SIB APQP System • {formatDate(new Date().toISOString())}
       </div>
-
     </div>
   )
 }
