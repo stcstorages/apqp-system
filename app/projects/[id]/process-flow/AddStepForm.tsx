@@ -8,25 +8,21 @@ export default function AddStepForm({ projectId }: { projectId: string }) {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
-  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault() // Stop default browser reload
-    setIsLoading(true) // 1. Start Spinner immediately
-
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsLoading(true)
+    
     const form = e.currentTarget
     const formData = new FormData(form)
 
     try {
-      // 2. Call Server Action
       await addProcessStep(formData)
-      
-      // 3. Reset form and refresh data
       form.reset()
-      router.refresh()
-    } catch (error) {
-      console.error(error)
-      alert("Failed to add step")
+      router.refresh() // Critical: Updates the list on the right
+    } catch (e) {
+      console.error(e)
+      alert("Failed to save step")
     } finally {
-      // 4. Stop Spinner
       setIsLoading(false)
     }
   }
@@ -38,7 +34,7 @@ export default function AddStepForm({ projectId }: { projectId: string }) {
         Define the process flow here. Select symbols and special characteristics if applicable.
       </p>
       
-      <form id="add-step-form" onSubmit={handleFormSubmit} className="space-y-4">
+      <form id="add-step-form" onSubmit={handleSubmit} className="space-y-4">
         <input type="hidden" name="project_id" value={projectId} />
         
         <div className="grid grid-cols-2 gap-2">
@@ -49,12 +45,12 @@ export default function AddStepForm({ projectId }: { projectId: string }) {
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase">Symbol</label>
             <select name="symbol_type" className="mt-1 block w-full rounded border border-gray-300 p-2 text-sm bg-white">
-              <option value="start">Start/End</option>
-              <option value="process">Process (○)</option>
-              <option value="inspection">Inspection (◇)</option>
-              <option value="storage">Storage (▽)</option>
-              <option value="transport">Transport (→)</option>
-              <option value="delay">Delay (D)</option>
+              <option value="start">START</option>
+              <option value="process">PROCESS</option>
+              <option value="inspection">INSPECTION</option>
+              <option value="inprocess">IN-PROCESS</option>
+              <option value="storage">STORAGE</option>
+              <option value="delivery">DELIVERY</option>
             </select>
           </div>
         </div>
@@ -72,7 +68,7 @@ export default function AddStepForm({ projectId }: { projectId: string }) {
         <button 
           type="submit" 
           disabled={isLoading}
-          className={`w-full rounded px-3 py-2 text-sm font-bold text-white shadow-sm flex justify-center items-center gap-2 ${isLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'}`}
+          className={`w-full rounded px-3 py-2 text-sm font-bold text-white shadow-sm flex justify-center items-center gap-2 ${isLoading ? 'bg-blue-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-500'}`}
         >
           {isLoading ? (
              <>

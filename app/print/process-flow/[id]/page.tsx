@@ -4,7 +4,7 @@ import SpecialSymbol from '@/app/components/SpecialSymbol'
 import RichText from '@/app/components/RichText'
 import CustomerLogo from '@/app/components/CustomerLogo'
 
-// 1. Safe Date Formatter
+// 1. Safe Date Helper
 const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
@@ -12,13 +12,14 @@ const formatDate = (dateStr: string | null | undefined) => {
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')
 }
 
-// 2. Safe Symbol Code Extractor (Fixes the crash)
+// 2. Safe Symbol Extractor (Crucial for preventing crashes)
 const getSymbolCode = (scData: any) => {
   if (!scData) return null
+  // Supabase join sometimes returns an array, sometimes an object
   if (Array.isArray(scData)) {
     return scData.length > 0 ? scData[0].symbol_code : null
   }
-  return scData.symbol_code
+  return scData?.symbol_code || null
 }
 
 export default async function ProcessFlowPrintPage({
@@ -29,14 +30,14 @@ export default async function ProcessFlowPrintPage({
   const { id } = await params
   const supabase = await createClient()
   
-  // Fetch Project
-  const { data: project, error: projError } = await supabase.from('projects').select('*').eq('id', id).single()
+  // 1. Fetch Project
+  const { data: project, error: projectError } = await supabase.from('projects').select('*').eq('id', id).single()
   
-  if (projError || !project) {
-    return <div className="p-4 text-red-600">Error loading project: {projError?.message}</div>
+  if (projectError || !project) {
+    return <div className="p-10 text-red-600">Error loading project: {projectError?.message}</div>
   }
   
-  // Fetch Logo
+  // 2. Fetch Customer Logo Safely
   let logoUrl = null
   if (project.customer) {
     const { data: customerData } = await supabase
@@ -44,16 +45,19 @@ export default async function ProcessFlowPrintPage({
       .select('logo_url')
       .eq('name', project.customer)
       .maybeSingle()
+      
     if (customerData) logoUrl = customerData.logo_url
   }
 
-  // Fetch Steps
+  // 3. Fetch Steps
   const { data: steps } = await supabase
     .from('process_steps')
     .select(`
       *,
       special_characteristics (
-        symbol_code
+        name,
+        symbol_code,
+        description
       )
     `)
     .eq('project_id', id)
@@ -120,7 +124,7 @@ export default async function ProcessFlowPrintPage({
                 <td className="border border-black p-2 text-center font-bold align-middle">{step.step_number}</td>
                 
                 <td className="border border-black p-2 uppercase align-middle break-words whitespace-normal">
-                  <RichText content={step.description} />
+                  <RichText content={step.description || ''} />
                 </td>
 
                 <td className="border border-black p-0 h-[80px] align-middle relative overflow-visible">
@@ -158,7 +162,7 @@ export default async function ProcessFlowPrintPage({
                 </td>
                 
                 <td className="border border-black p-2 align-top break-words whitespace-normal">
-                  <RichText content={step.remarks} />
+                  <RichText content={step.remarks || ''} />
                 </td>
               </tr>
             )
