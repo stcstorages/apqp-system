@@ -36,24 +36,26 @@ export default async function GanttPrintPage({
   const { id } = await params
   const supabase = await createClient()
 
+  // 1. Safe Project Fetch
   const { data: project, error: projError } = await supabase.from('projects').select('*').eq('id', id).single()
-  if (projError || !project) return <div className="p-4 text-red-600">Error: Project not found.</div>
 
+  if (projError || !project) {
+     return <div className="p-10 text-red-600 font-bold">Error loading project: {projError?.message}</div>
+  }
+
+  // 2. Safe Logo Fetch
   let logoUrl = null
   if (project.customer) {
     const { data: customerData } = await supabase.from('customers').select('logo_url').eq('name', project.customer).maybeSingle()
     if (customerData) logoUrl = customerData.logo_url
   }
   
-  const { data: rawTasks } = await supabase
-    .from('gantt_tasks')
-    .select('*')
-    .eq('project_id', id)
-    .order('order_index', { ascending: true })
+  // 3. Fetch Tasks
+  const { data: rawTasks } = await supabase.from('gantt_tasks').select('*').eq('project_id', id).order('order_index', { ascending: true })
 
   const processedTasks = rawTasks?.map(t => ({ ...t })) || []
   
-  // Header recalc
+  // Logic: Recalculate Headers
   if (processedTasks.length > 0) {
     const headerIndices: number[] = []
     processedTasks.forEach((t, i) => { if (t.type === 'project') headerIndices.push(i) })
@@ -80,7 +82,6 @@ export default async function GanttPrintPage({
   let maxDate = new Date()
   
   if (processedTasks.length > 0) {
-    // Initial safe values
     minDate = new Date(processedTasks[0].start_date)
     maxDate = new Date(processedTasks[0].end_date)
     
@@ -91,7 +92,6 @@ export default async function GanttPrintPage({
       if (!isNaN(e.getTime()) && e > maxDate) maxDate = e
     })
   } else {
-    // FALLBACK IF EMPTY
     minDate = new Date()
     maxDate = new Date()
     maxDate.setDate(maxDate.getDate() + 30)
@@ -197,7 +197,11 @@ export default async function GanttPrintPage({
             })}
           </div>
           <div className="absolute top-6 bottom-0 left-0 right-0 z-0">
-             {weeks.map((w, i) => <div key={i} className="absolute top-0 bottom-0 border-l border-gray-100 h-full" style={{ left: `${left}%` }}></div>)}
+             {weeks.map((w, i) => {
+               // FIX IS HERE: Defined 'left'
+               const left = getPos(w.toISOString())
+               return <div key={i} className="absolute top-0 bottom-0 border-l border-gray-100 h-full" style={{ left: `${left}%` }}></div>
+             })}
              <div className="absolute top-0 bottom-0 border-l-2 border-blue-400 opacity-30 z-0" style={{ left: `${getPos(new Date().toISOString())}%` }}></div>
           </div>
           <div className="relative z-10 pt-[0px]">
