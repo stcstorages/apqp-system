@@ -4,7 +4,6 @@ import SpecialSymbol from '@/app/components/SpecialSymbol'
 import RichText from '@/app/components/RichText'
 import CustomerLogo from '@/app/components/CustomerLogo'
 
-// 1. Safe Date Helper
 const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
@@ -12,10 +11,8 @@ const formatDate = (dateStr: string | null | undefined) => {
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')
 }
 
-// 2. Safe Symbol Extractor (Crucial for preventing crashes)
 const getSymbolCode = (scData: any) => {
   if (!scData) return null
-  // Supabase join sometimes returns an array, sometimes an object
   if (Array.isArray(scData)) {
     return scData.length > 0 ? scData[0].symbol_code : null
   }
@@ -30,40 +27,20 @@ export default async function ProcessFlowPrintPage({
   const { id } = await params
   const supabase = await createClient()
   
-  // 1. Fetch Project
-  const { data: project, error: projectError } = await supabase.from('projects').select('*').eq('id', id).single()
+  const { data: project, error: projError } = await supabase.from('projects').select('*').eq('id', id).single()
   
-  if (projectError || !project) {
-    return <div className="p-10 text-red-600">Error loading project: {projectError?.message}</div>
-  }
-  
-  // 2. Fetch Customer Logo Safely
-  let logoUrl = null
-  if (project.customer) {
-    const { data: customerData } = await supabase
-      .from('customers')
-      .select('logo_url')
-      .eq('name', project.customer)
-      .maybeSingle()
-      
-    if (customerData) logoUrl = customerData.logo_url
+  if (projError || !project) {
+    return <div className="p-10 text-red-600">Error loading project: {projError?.message}</div>
   }
 
-  // 3. Fetch Steps
+  // NOTE: Removed the Customer Table fetch. 
+  // The Logo component now handles it automatically based on project.customer string.
+
   const { data: steps } = await supabase
     .from('process_steps')
-    .select(`
-      *,
-      special_characteristics (
-        name,
-        symbol_code,
-        description
-      )
-    `)
+    .select(`*, special_characteristics (name, symbol_code, description)`)
     .eq('project_id', id)
     .order('step_number', { ascending: true })
-
-  const { data: scLibrary } = await supabase.from('special_characteristics').select('*')
 
   return (
     <div className="min-h-screen bg-white text-black p-4 text-xs font-sans print-container">
@@ -78,7 +55,8 @@ export default async function ProcessFlowPrintPage({
       {/* LOGO HEADER */}
       <div className="flex justify-between items-center mb-2">
          <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
-         <CustomerLogo customer={project.customer} logoUrl={logoUrl} />
+         {/* Pass only the name */}
+         <CustomerLogo customer={project.customer} />
       </div>
 
       {/* DOCUMENT HEADER */}
@@ -87,11 +65,7 @@ export default async function ProcessFlowPrintPage({
           Process and Inspection Flow Chart
         </div>
         <div className="grid grid-cols-5 divide-x divide-black text-center bg-gray-100 font-bold border-b border-black">
-          <div className="p-1">MODEL</div>
-          <div className="p-1">CUSTOMER</div>
-          <div className="p-1">PART NAME</div>
-          <div className="p-1">PART NO</div>
-          <div className="p-1">DOC. NO.</div>
+          <div className="p-1">MODEL</div><div className="p-1">CUSTOMER</div><div className="p-1">PART NAME</div><div className="p-1">PART NO</div><div className="p-1">DOC. NO.</div>
         </div>
         <div className="grid grid-cols-5 divide-x divide-black text-center">
           <div className="p-1">{project.model || '-'}</div>
@@ -117,96 +91,36 @@ export default async function ProcessFlowPrintPage({
           {(steps || []).map((step, index) => {
             const isLast = index === ((steps?.length || 1) - 1);
             const isInspection = step.symbol_type === 'inspection';
-            const symbolCode = getSymbolCode(step.special_characteristics); // Use Helper
+            const symbolCode = getSymbolCode(step.special_characteristics);
 
             return (
               <tr key={step.id}>
                 <td className="border border-black p-2 text-center font-bold align-middle">{step.step_number}</td>
-                
-                <td className="border border-black p-2 uppercase align-middle break-words whitespace-normal">
-                  <RichText content={step.description || ''} />
-                </td>
-
+                <td className="border border-black p-2 uppercase align-middle break-words whitespace-normal"><RichText content={step.description} /></td>
                 <td className="border border-black p-0 h-[80px] align-middle relative overflow-visible">
-                   {index > 0 && (
-                     <div className="absolute left-3/4 top-0 w-[1px] bg-black -translate-x-1/2 z-0" style={{ height: '50%' }}></div>
-                   )}
-                   {!isLast && (
-                     <div className="absolute left-3/4 top-1/2 w-[1px] bg-black -translate-x-1/2 z-0" style={{ height: '50%' }}></div>
-                   )}
-                   {isInspection && !isLast && (
-                      <div className="absolute left-[78%] bottom-[5%] text-[8px] font-bold bg-white px-0.5 z-20">OK</div>
-                   )}
+                   {index > 0 && <div className="absolute left-3/4 top-0 w-[1px] bg-black -translate-x-1/2 z-0" style={{ height: '50%' }}></div>}
+                   {!isLast && <div className="absolute left-3/4 top-1/2 w-[1px] bg-black -translate-x-1/2 z-0" style={{ height: '50%' }}></div>}
+                   {isInspection && !isLast && <div className="absolute left-[78%] bottom-[5%] text-[8px] font-bold bg-white px-0.5 z-20">OK</div>}
                    {isInspection && (
                      <>
                         <div className="absolute top-1/2 left-[40px] right-[25%] h-[1px] bg-black z-0"></div>
                         <div className="absolute top-[35%] left-[65px] text-[8px] font-bold bg-white px-0.5 z-20">NG</div>
-                        <div className="absolute top-1/2 left-1 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-2 py-1 z-20 border border-black shadow-sm">
-                          REJECT
-                        </div>
+                        <div className="absolute top-1/2 left-1 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-2 py-1 z-20 border border-black shadow-sm">REJECT</div>
                      </>
                    )}
                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 pl-[50%]">
-                     <div className="bg-white p-1">
-                        <FlowSymbol type={step.symbol_type || 'process'} />
-                     </div>
+                     <div className="bg-white p-1"><FlowSymbol type={step.symbol_type || 'process'} /></div>
                    </div>
                 </td>
-
                 <td className="border border-black p-1 text-center align-middle">
-                  {symbolCode && (
-                    <div className="flex justify-center items-center">
-                       <SpecialSymbol code={symbolCode} />
-                    </div>
-                  )}
+                  {symbolCode && <div className="flex justify-center items-center"><SpecialSymbol code={symbolCode} /></div>}
                 </td>
-                
-                <td className="border border-black p-2 align-top break-words whitespace-normal">
-                  <RichText content={step.remarks || ''} />
-                </td>
+                <td className="border border-black p-2 align-top break-words whitespace-normal"><RichText content={step.remarks} /></td>
               </tr>
             )
           })}
         </tbody>
       </table>
-
-      {/* FOOTER LEGEND */}
-      <div className="border border-black text-[10px] break-inside-avoid">
-        <div className="grid grid-cols-3 divide-x divide-black border-b border-black">
-          <div>
-             <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">PROCESS SYMBOLS</div>
-             <div className="grid grid-cols-2 gap-1 p-2">
-                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="start"/></div> Start/End</div>
-                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="process"/></div> Process</div>
-                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="inspection"/></div> Insp.</div>
-                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="storage"/></div> Storage</div>
-                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="transport"/></div> Delivery</div>
-             </div>
-          </div>
-          <div>
-             <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">KEY CHARACTERISTICS</div>
-             <div className="p-2 space-y-1">
-               {(scLibrary || []).map((sc: any) => (
-                 <div key={sc.id} className="flex justify-between items-center border-b border-gray-100 last:border-0">
-                    <span>{sc.name}</span>
-                    <SpecialSymbol code={sc.symbol_code} />
-                 </div>
-               ))}
-             </div>
-          </div>
-          <div className="flex flex-col">
-             <div className="grid grid-cols-3 divide-x divide-black bg-gray-100 font-bold text-center border-b border-black"><div className="p-1">PREP</div><div className="p-1">CHECK</div><div className="p-1">APPR</div></div>
-             <div className="grid grid-cols-3 divide-x divide-black flex-1 min-h-[60px]"><div></div><div></div><div></div></div>
-          </div>
-        </div>
-        
-        <div className="flex justify-between p-1 px-2 bg-gray-100 text-[9px]">
-           <div>ISSUE NO: 1</div>
-           <div>REVISION NO: 0</div>
-           <div>DATE: {formatDate(project.flow_date_orig)}</div>
-        </div>
-      </div>
-
       <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
     </div>
   )
