@@ -9,20 +9,13 @@ const formatDate = (dateStr: string | null | undefined) => {
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')
 }
 
-// CRASH FIX: Handle Supabase Join (Array vs Object) safely
 const getSymbolCode = (scData: any) => {
   if (!scData) return null
-  if (Array.isArray(scData)) {
-    return scData.length > 0 ? scData[0].symbol_code : null
-  }
+  if (Array.isArray(scData)) return scData.length > 0 ? scData[0].symbol_code : null
   return scData.symbol_code
 }
 
-export default async function FmeaPrintPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
+export default async function FmeaPrintPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
 
@@ -30,20 +23,17 @@ export default async function FmeaPrintPage({
   const { data: project, error: projError } = await supabase.from('projects').select('*').eq('id', id).single()
 
   if (projError || !project) {
-     return <div className="p-10 text-red-600 font-bold">Error loading project: {projError?.message || 'Project not found'}</div>
+     return <div className="p-10 text-red-600 font-bold">Error loading project.</div>
   }
 
   // 2. Safe Logo Fetch
   let logoUrl = null
   if (project.customer) {
-    const { data: customerData } = await supabase
-      .from('customers')
-      .select('logo_url')
-      .eq('name', project.customer)
-      .maybeSingle() // Fix: Prevents crash if logo missing
+    const { data: customerData } = await supabase.from('customers').select('logo_url').eq('name', project.customer).maybeSingle()
     if (customerData) logoUrl = customerData.logo_url
   }
 
+  // 3. Fetch Data
   const { data: steps } = await supabase
     .from('process_steps')
     .select('*, pfmea_records(*, special_characteristics(symbol_code))')
@@ -53,46 +43,36 @@ export default async function FmeaPrintPage({
   return (
     <div className="min-h-screen bg-white text-black p-4 print-container">
       <style>{`
-        @media print {
-          @page { size: landscape; margin: 5mm; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: Arial, sans-serif; }
-          .print-border-black { border-color: #000 !important; }
-          table { font-size: 8px; }
-        }
+        @media print { @page { size: landscape; margin: 5mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: Arial, sans-serif; } .print-border-black { border-color: #000 !important; } table { font-size: 8px; } }
       `}</style>
 
-      {/* LOGO */}
+      {/* LOGO HEADER */}
       <div className="flex justify-between items-center mb-2">
          <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
          <CustomerLogo customer={project.customer} logoUrl={logoUrl} />
       </div>
 
-      {/* HEADER */}
+      {/* DOCUMENT HEADER */}
       <div className="mb-2 text-xs">
-        <div className="font-bold text-lg text-center mb-4 uppercase">
-          Potential Failure Mode and Effects Analysis (Process FMEA)
-        </div>
-        
+        <div className="font-bold text-lg text-center mb-4 uppercase">Potential Failure Mode and Effects Analysis (Process FMEA)</div>
         <div className="border border-black flex">
            <div className="w-1/3 border-r border-black">
               <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">FMEA Number</div><div>{project.pfmea_number || '-'}</div></div>
-              <div className="border-b border-black p-1 h-14"><div className="text-[8px] text-gray-500">Part Number</div><div>{project.part_number || '-'}</div></div>
-              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Part Name/Description</div><div>{project.name || '-'}</div></div>
+              <div className="border-b border-black p-1 h-14"><div className="text-[8px] text-gray-500">Part Number</div><div>{project.part_number}</div></div>
+              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Part Name/Description</div><div>{project.name}</div></div>
               <div className="p-1 h-8"><div className="text-[8px] text-gray-500">Model / Vehicle Ref</div><div>{project.model || '-'}</div></div>
            </div>
-
            <div className="w-1/3 border-r border-black">
-              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Process Responsibility / Key Contact</div><div>{project.key_contact || '-'}</div></div>
-              <div className="border-b border-black p-1 h-14 overflow-hidden"><div className="text-[8px] text-gray-500">Core Team</div><div className="text-[9px] leading-tight break-words whitespace-normal">{project.core_team || '-'}</div></div>
+              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Process Responsibility</div><div>{project.key_contact || '-'}</div></div>
+              <div className="border-b border-black p-1 h-14 overflow-hidden"><div className="text-[8px] text-gray-500">Core Team</div><div className="text-[9px] leading-tight">{project.core_team || '-'}</div></div>
               <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Prepared By</div><div>Internal</div></div>
-              <div className="p-1 h-8"><div className="text-[8px] text-gray-500">Other Approval/Date</div><div>{formatDate(project.other_approval)}</div></div>
+              <div className="p-1 h-8"><div className="text-[8px] text-gray-500">Other Approval</div><div>{formatDate(project.other_approval)}</div></div>
            </div>
-
            <div className="w-1/3">
-              <div className="border-b border-black flex h-8"><div className="w-1/2 border-r border-black p-1"><div className="text-[8px] text-gray-500">FMEA Date (Orig.)</div><div>{formatDate(project.pfmea_date_orig)}</div></div><div className="w-1/2 p-1"><div className="text-[8px] text-gray-500">FMEA Date (Rev.)</div><div>{formatDate(project.pfmea_date_rev)}</div></div></div>
-              <div className="border-b border-black p-1 h-14"><div className="text-[8px] text-gray-500">Customer Engineering Approval/Date</div><div>{formatDate(project.customer_eng_approval)}</div></div>
-              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Customer Quality Approval/Date</div><div>{formatDate(project.customer_quality_approval)}</div></div>
-              <div className="p-1 h-8"><div className="text-[8px] text-gray-500">Other Approval/Date</div><div>{formatDate(project.other_approval)}</div></div>
+              <div className="border-b border-black flex h-8"><div className="w-1/2 border-r border-black p-1"><div className="text-[8px] text-gray-500">Date (Orig.)</div><div>{formatDate(project.pfmea_date_orig)}</div></div><div className="w-1/2 p-1"><div className="text-[8px] text-gray-500">Date (Rev.)</div><div>{formatDate(project.pfmea_date_rev)}</div></div></div>
+              <div className="border-b border-black p-1 h-14"><div className="text-[8px] text-gray-500">Cust. Eng Approval</div><div>{formatDate(project.customer_eng_approval)}</div></div>
+              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Cust. QA Approval</div><div>{formatDate(project.customer_quality_approval)}</div></div>
+              <div className="p-1 h-8"><div className="text-[8px] text-gray-500">Other Approval</div><div>{formatDate(project.other_approval)}</div></div>
            </div>
         </div>
       </div>
@@ -101,19 +81,17 @@ export default async function FmeaPrintPage({
       <table className="w-full border-collapse border border-black">
         <thead>
           <tr className="bg-gray-100 text-center font-bold">
-            <th className="border border-black p-1" rowSpan={2}>Process Function<br/>Requirements</th>
-            <th className="border border-black p-1" rowSpan={2}>Potential Failure Mode</th>
-            <th className="border border-black p-1" rowSpan={2}>Potential Effects of Failure</th>
+            <th className="border border-black p-1" rowSpan={2}>Step / Process</th>
+            <th className="border border-black p-1" rowSpan={2}>Failure Mode</th>
+            <th className="border border-black p-1" rowSpan={2}>Failure Effects</th>
             <th className="border border-black p-1 w-6" rowSpan={2}>Sev</th>
             <th className="border border-black p-1 w-6" rowSpan={2}>Cls</th>
-            <th className="border border-black p-1" rowSpan={2}>Potential Cause(s)</th>
-            <th className="border border-black p-1" rowSpan={2}>Prevention Control</th>
+            <th className="border border-black p-1" rowSpan={2}>Potential Cause</th>
+            <th className="border border-black p-1" rowSpan={2}>Prevention</th>
             <th className="border border-black p-1 w-6" rowSpan={2}>Occ</th>
-            <th className="border border-black p-1" rowSpan={2}>Detection Control</th>
+            <th className="border border-black p-1" rowSpan={2}>Detection</th>
             <th className="border border-black p-1 w-6" rowSpan={2}>Det</th>
             <th className="border border-black p-1 w-8" rowSpan={2}>RPN</th>
-            <th className="border border-black p-1" rowSpan={2}>Recommended Action(s)</th>
-            <th className="border border-black p-1" rowSpan={2}>Responsibility &<br/>Target Date</th>
             <th className="border border-black p-1" colSpan={5}>Action Results</th>
           </tr>
           <tr className="bg-gray-100 text-center font-bold">
@@ -127,44 +105,32 @@ export default async function FmeaPrintPage({
         <tbody>
           {(steps || []).map((step) => {
              const rows = (step.pfmea_records && step.pfmea_records.length > 0) ? step.pfmea_records : [{}];
-             
              return rows.map((risk: any, index: number) => {
-               // Safe Symbol Logic
-               const symbolCode = getSymbolCode(risk.special_characteristics)
-
+               const symbolCode = getSymbolCode(risk.special_characteristics);
                return (
                  <tr key={risk.id || `${step.id}-${index}`}>
                    {index === 0 && <td className="border border-black p-1 align-top font-bold bg-gray-50" rowSpan={rows.length}><div className="font-mono text-[9px] mb-1">OP{step.step_number}</div>{step.description}</td>}
                    <td className="border border-black p-1 align-top">{risk.failure_mode || '-'}</td>
                    <td className="border border-black p-1 align-top">{risk.failure_effect || '-'}</td>
                    <td className="border border-black p-1 text-center align-top">{risk.severity || ''}</td>
-                   <td className="border border-black p-1 text-center align-top">
-                      {symbolCode && <SpecialSymbol code={symbolCode} />}
-                   </td>
+                   <td className="border border-black p-1 text-center align-top">{symbolCode && <SpecialSymbol code={symbolCode} />}</td>
                    <td className="border border-black p-1 align-top">{risk.cause || '-'}</td>
                    <td className="border border-black p-1 align-top">{risk.control_prevention || '-'}</td>
                    <td className="border border-black p-1 text-center align-top">{risk.occurrence || ''}</td>
                    <td className="border border-black p-1 align-top">{risk.current_controls || '-'}</td>
                    <td className="border border-black p-1 text-center align-top">{risk.detection || ''}</td>
-                   <td className="border border-black p-1 text-center font-bold bg-gray-50 align-top">
-                      {(risk.severity * risk.occurrence * risk.detection) || ''}
-                   </td>
-                   <td className="border border-black p-1 align-top">{risk.recommended_actions || '-'}</td>
-                   <td className="border border-black p-1 align-top">{risk.responsibility || '-'}</td>
+                   <td className="border border-black p-1 text-center font-bold bg-gray-50 align-top">{(risk.severity * risk.occurrence * risk.detection) || ''}</td>
                    <td className="border border-black p-1 align-top">{risk.action_taken || '-'}</td>
                    <td className="border border-black p-1 text-center align-top">{risk.act_severity || ''}</td>
                    <td className="border border-black p-1 text-center align-top">{risk.act_occurrence || ''}</td>
                    <td className="border border-black p-1 text-center align-top">{risk.act_detection || ''}</td>
-                   <td className="border border-black p-1 text-center font-bold align-top">
-                      {(risk.act_severity * risk.act_occurrence * risk.act_detection) || ''}
-                   </td>
+                   <td className="border border-black p-1 text-center font-bold align-top">{(risk.act_severity * risk.act_occurrence * risk.act_detection) || ''}</td>
                  </tr>
                )
              });
           })}
         </tbody>
       </table>
-
       <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
     </div>
   )

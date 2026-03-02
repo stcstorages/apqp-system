@@ -9,37 +9,25 @@ const formatDate = (dateStr: string | null | undefined) => {
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')
 }
 
-// CRASH FIX: Safe Symbol Helper
 const getSymbolCode = (scData: any) => {
   if (!scData) return null
-  if (Array.isArray(scData)) {
-    return scData.length > 0 ? scData[0].symbol_code : null
-  }
+  if (Array.isArray(scData)) return scData.length > 0 ? scData[0].symbol_code : null
   return scData.symbol_code
 }
 
-export default async function ControlPlanPrintPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
+export default async function ControlPlanPrintPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
 
   const { data: project, error: projError } = await supabase.from('projects').select('*').eq('id', id).single()
 
   if (projError || !project) {
-     return <div className="p-10 text-red-600 font-bold">Error loading project: {projError?.message || 'Project not found'}</div>
+     return <div className="p-10 text-red-600 font-bold">Error loading project.</div>
   }
 
-  // Safe Logo Fetch
   let logoUrl = null
   if (project.customer) {
-    const { data: customerData } = await supabase
-      .from('customers')
-      .select('logo_url')
-      .eq('name', project.customer)
-      .maybeSingle()
+    const { data: customerData } = await supabase.from('customers').select('logo_url').eq('name', project.customer).maybeSingle()
     if (customerData) logoUrl = customerData.logo_url
   }
 
@@ -52,12 +40,7 @@ export default async function ControlPlanPrintPage({
   return (
     <div className="min-h-screen bg-white text-black p-4 print-container">
       <style>{`
-        @media print {
-          @page { size: landscape; margin: 5mm; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: Arial, sans-serif; }
-          table { font-size: 9px; }
-          .print-border-black { border-color: #000 !important; }
-        }
+        @media print { @page { size: landscape; margin: 5mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: Arial, sans-serif; } .print-border-black { border-color: #000 !important; } table { font-size: 9px; } }
       `}</style>
 
       {/* LOGO */}
@@ -69,52 +52,46 @@ export default async function ControlPlanPrintPage({
       {/* HEADER */}
       <div className="mb-2 text-xs">
         <div className="font-bold text-lg text-center mb-2">CONTROL PLAN</div>
-        
         <div className="flex gap-8 mb-2 text-[10px]">
            <div className="flex items-center gap-1"><div className={`w-3 h-3 border border-black ${project.cp_phase === 'prototype' ? 'bg-black' : ''}`}></div> Prototype</div>
            <div className="flex items-center gap-1"><div className={`w-3 h-3 border border-black ${project.cp_phase === 'pre-launch' ? 'bg-black' : ''}`}></div> Pre-Launch</div>
            <div className="flex items-center gap-1"><div className={`w-3 h-3 border border-black ${project.cp_phase === 'production' ? 'bg-black' : ''}`}></div> Production</div>
            <div className="flex items-center gap-1"><div className={`w-3 h-3 border border-black ${project.cp_phase === 'safe-launch' ? 'bg-black' : ''}`}></div> Safe Launch</div>
         </div>
-
         <div className="border border-black flex">
-           {/* Left Block */}
            <div className="w-1/3 border-r border-black">
               <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Control Plan Number</div><div>{project.cp_number || '-'}</div></div>
-              <div className="border-b border-black p-1 h-14"><div className="text-[8px] text-gray-500">Part Number/Latest Change Level</div><div>{project.part_number || '-'}</div></div>
-              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Part Name/Description</div><div>{project.name || '-'}</div></div>
+              <div className="border-b border-black p-1 h-14"><div className="text-[8px] text-gray-500">Part Number</div><div>{project.part_number}</div></div>
+              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Part Name</div><div>{project.name}</div></div>
               <div className="flex h-8"><div className="w-1/2 border-r border-black p-1"><div className="text-[8px] text-gray-500">Supplier/Plant</div><div>Internal</div></div><div className="w-1/2 p-1"><div className="text-[8px] text-gray-500">Supplier Code</div><div>-</div></div></div>
            </div>
-           {/* Middle Block */}
            <div className="w-1/3 border-r border-black">
-              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Key Contact/Phone</div><div>{project.key_contact || '-'}</div></div>
-              <div className="border-b border-black p-1 h-14 overflow-hidden"><div className="text-[8px] text-gray-500">Core Team</div><div className="text-[9px] leading-tight break-words whitespace-normal">{project.core_team || '-'}</div></div>
-              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Supplier/Plant Approval/Date</div><div>-</div></div>
-              <div className="p-1 h-8"><div className="text-[8px] text-gray-500">Other Approval/Date</div><div>{formatDate(project.other_approval)}</div></div>
+              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Key Contact</div><div>{project.key_contact || '-'}</div></div>
+              <div className="border-b border-black p-1 h-14 overflow-hidden"><div className="text-[8px] text-gray-500">Core Team</div><div className="text-[9px] leading-tight">{project.core_team || '-'}</div></div>
+              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Supplier Approval</div><div>-</div></div>
+              <div className="p-1 h-8"><div className="text-[8px] text-gray-500">Other Approval</div><div>{formatDate(project.other_approval)}</div></div>
            </div>
-           {/* Right Block */}
            <div className="w-1/3">
               <div className="border-b border-black flex h-8"><div className="w-1/2 border-r border-black p-1"><div className="text-[8px] text-gray-500">Date (Orig.)</div><div>{formatDate(project.cp_date_orig)}</div></div><div className="w-1/2 p-1"><div className="text-[8px] text-gray-500">Date (Rev.)</div><div>{formatDate(project.cp_date_rev)}</div></div></div>
-              <div className="border-b border-black p-1 h-14"><div className="text-[8px] text-gray-500">Customer Engineering Approval/Date</div><div>{formatDate(project.customer_eng_approval)}</div></div>
-              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Customer Quality Approval/Date</div><div>{formatDate(project.customer_quality_approval)}</div></div>
-              <div className="p-1 h-8"><div className="text-[8px] text-gray-500">Other Approval/Date</div><div>{formatDate(project.other_approval)}</div></div>
+              <div className="border-b border-black p-1 h-14"><div className="text-[8px] text-gray-500">Cust. Eng Approval</div><div>{formatDate(project.customer_eng_approval)}</div></div>
+              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Cust. QA Approval</div><div>{formatDate(project.customer_quality_approval)}</div></div>
+              <div className="p-1 h-8"><div className="text-[8px] text-gray-500">Other Approval</div><div>{formatDate(project.other_approval)}</div></div>
            </div>
         </div>
       </div>
 
-      {/* TABLE */}
       <table className="w-full border-collapse border border-black">
         <thead>
           <tr className="bg-gray-100 text-center font-bold">
-            <th className="border border-black p-1 w-8">Part/ Process<br/>No.</th>
-            <th className="border border-black p-1">Process Name/<br/>Operation Desc.</th>
-            <th className="border border-black p-1 w-24">Machine,<br/>Device, Jig,<br/>Tools</th>
-            <th className="border border-black p-1 w-6">No.</th>
+            <th className="border border-black p-1 w-8">No.</th>
+            <th className="border border-black p-1">Process Name</th>
+            <th className="border border-black p-1 w-24">Machine</th>
+            <th className="border border-black p-1 w-6">#</th>
             <th className="border border-black p-1">Product</th>
             <th className="border border-black p-1">Process</th>
             <th className="border border-black p-1 w-8">Class</th>
-            <th className="border border-black p-1 w-20">Spec/Tol</th>
-            <th className="border border-black p-1 w-20">Eval Tech</th>
+            <th className="border border-black p-1 w-20">Spec</th>
+            <th className="border border-black p-1 w-20">Eval</th>
             <th className="border border-black p-1 w-8">Size</th>
             <th className="border border-black p-1 w-8">Freq</th>
             <th className="border border-black p-1 w-24">Control</th>
@@ -126,14 +103,14 @@ export default async function ControlPlanPrintPage({
           {(steps || []).map((step) => {
              const cpRows: any[] = [];
              if (step.pfmea_records) {
-                step.pfmea_records.forEach((risk: any) => {
+               step.pfmea_records.forEach((risk: any) => {
                   const symbolCode = getSymbolCode(risk.special_characteristics);
                   if (risk.control_plan_records && risk.control_plan_records.length > 0) {
                       risk.control_plan_records.forEach((cp: any) => {
                           cpRows.push({ ...cp, symbolCode });
                       });
                   }
-                });
+               });
              }
              if (cpRows.length === 0) cpRows.push({});
 
@@ -149,9 +126,7 @@ export default async function ControlPlanPrintPage({
                  <td className="border border-black p-1 text-center">{index + 1}</td>
                  <td className="border border-black p-1">{cp.characteristic_product || ''}</td>
                  <td className="border border-black p-1">{cp.characteristic_process || ''}</td>
-                 <td className="border border-black p-1 text-center">
-                    {cp.symbolCode && <SpecialSymbol code={cp.symbolCode} />}
-                 </td>
+                 <td className="border border-black p-1 text-center">{cp.symbolCode && <SpecialSymbol code={cp.symbolCode} />}</td>
                  <td className="border border-black p-1">{cp.specification_tolerance || ''}</td>
                  <td className="border border-black p-1">{cp.eval_measurement_technique || ''}</td>
                  <td className="border border-black p-1 text-center">{cp.sample_size || ''}</td>
@@ -164,7 +139,6 @@ export default async function ControlPlanPrintPage({
           })}
         </tbody>
       </table>
-
       <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
     </div>
   )
