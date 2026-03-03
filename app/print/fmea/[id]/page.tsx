@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import SpecialSymbol from '@/app/components/SpecialSymbol'
 import CustomerLogo from '@/app/components/CustomerLogo'
 
-// Safe Date Helper
+// Helper: Date Format
 const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr || typeof dateStr !== 'string') return '-'
   const date = new Date(dateStr)
@@ -10,13 +10,13 @@ const formatDate = (dateStr: string | null | undefined) => {
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-// Safe Symbol Helper (Prevents Object crashes)
+// Helper: Safe Symbol Extraction
 const getSymbolCode = (scData: any) => {
   if (!scData) return null
   if (Array.isArray(scData)) {
     return scData.length > 0 ? scData[0].symbol_code : null
   }
-  return scData.symbol_code
+  return scData?.symbol_code || null
 }
 
 export default async function FmeaPrintPage({ params }: { params: Promise<{ id: string }> }) {
@@ -37,150 +37,85 @@ export default async function FmeaPrintPage({ params }: { params: Promise<{ id: 
     if (customerData) logoUrl = customerData.logo_url
   }
 
-  // 3. Fetch Data (Safe - No Joins)
+  // 3. Fetch Steps & Risks (No Deep Joins on SC to prevent crashes)
   const { data: steps } = await supabase
     .from('process_steps')
     .select('*, pfmea_records(*)')
     .eq('project_id', id)
     .order('step_number', { ascending: true })
 
-  // 4. Fetch Library (For JS Lookup)
+  // 4. Fetch SC Library (For JS Lookup)
   const { data: scLibrary } = await supabase.from('special_characteristics').select('*')
 
   return (
     <div className="min-h-screen bg-white text-black p-4 print-container">
-      <style>{`
-        @media print { 
-          @page { size: landscape; margin: 5mm; } 
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: Arial, sans-serif; } 
-          .print-border-black { border-color: #000 !important; } 
-          table { font-size: 8px; } 
-        }
-      `}</style>
+      <style>{`@media print { @page { size: landscape; margin: 5mm; } body { -webkit-print-color-adjust: exact; } .print-border-black { border-color: #000 !important; } table { font-size: 8px; } }`}</style>
 
-      {/* HEADER LOGO */}
+      {/* LOGO */}
       <div className="flex justify-between items-center mb-2">
          <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
          <CustomerLogo customer={project.customer || ''} logoUrl={logoUrl} />
       </div>
 
-      {/* DOCUMENT DETAILS HEADER */}
+      {/* HEADER */}
       <div className="mb-2 text-xs">
-        <div className="font-bold text-lg text-center mb-2 uppercase">
-          Potential Failure Mode and Effects Analysis (Process FMEA)
-        </div>
-        
+        <div className="font-bold text-lg text-center mb-2 uppercase">POTENTIAL FAILURE MODE AND EFFECTS ANALYSIS (PROCESS FMEA)</div>
         <div className="border border-black flex">
-           {/* Left Block */}
            <div className="w-1/3 border-r border-black">
-              <div className="border-b border-black p-1 h-8">
-                 <div className="text-[8px] text-gray-500 font-bold">FMEA Number</div>
-                 <div>{project.pfmea_number || '-'}</div>
-              </div>
-              <div className="border-b border-black p-1 h-8">
-                 <div className="text-[8px] text-gray-500 font-bold">Part Number</div>
-                 <div>{project.part_number}</div>
-              </div>
-              <div className="border-b border-black p-1 h-8">
-                 <div className="text-[8px] text-gray-500 font-bold">Part Name/Description</div>
-                 <div>{project.name}</div>
-              </div>
-              <div className="p-1 h-8">
-                 <div className="text-[8px] text-gray-500 font-bold">Model / Vehicle Ref</div>
-                 <div>{project.model || '-'}</div>
-              </div>
+              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">FMEA Number</div><div>{project.pfmea_number || '-'}</div></div>
+              <div className="border-b border-black p-1 h-14"><div className="text-[8px] text-gray-500">Part Number</div><div>{project.part_number}</div></div>
+              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Part Name/Description</div><div>{project.name}</div></div>
+              <div className="p-1 h-8"><div className="text-[8px] text-gray-500">Model / Vehicle Ref</div><div>{project.model || '-'}</div></div>
            </div>
-
-           {/* Middle Block */}
            <div className="w-1/3 border-r border-black">
-              <div className="border-b border-black p-1 h-8">
-                 <div className="text-[8px] text-gray-500 font-bold">Process Responsibility / Key Contact</div>
-                 <div>{project.key_contact || '-'}</div>
-              </div>
-              <div className="border-b border-black p-1 h-8 overflow-hidden">
-                 <div className="text-[8px] text-gray-500 font-bold">Core Team</div>
-                 <div className="text-[9px] leading-tight truncate">{project.core_team || '-'}</div>
-              </div>
-              <div className="border-b border-black p-1 h-8">
-                 <div className="text-[8px] text-gray-500 font-bold">Prepared By</div>
-                 <div>Internal</div>
-              </div>
-              <div className="p-1 h-8">
-                 <div className="text-[8px] text-gray-500 font-bold">Other Approval/Date</div>
-                 <div>{formatDate(project.other_approval)}</div>
-              </div>
+              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Resp</div><div>{project.key_contact || '-'}</div></div>
+              <div className="border-b border-black p-1 h-14 overflow-hidden"><div className="text-[8px] text-gray-500">Core Team</div><div className="text-[9px] leading-tight">{project.core_team || '-'}</div></div>
+              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Prepared By</div><div>Internal</div></div>
+              <div className="p-1 h-8"><div className="text-[8px] text-gray-500">Other Approval</div><div>{formatDate(project.other_approval)}</div></div>
            </div>
-
-           {/* Right Block */}
            <div className="w-1/3">
-              <div className="border-b border-black flex h-8">
-                 <div className="w-1/2 border-r border-black p-1">
-                    <div className="text-[8px] text-gray-500 font-bold">FMEA Date (Orig.)</div>
-                    <div>{formatDate(project.pfmea_date_orig)}</div>
-                 </div>
-                 <div className="w-1/2 p-1">
-                    <div className="text-[8px] text-gray-500 font-bold">FMEA Date (Rev.)</div>
-                    <div>{formatDate(project.pfmea_date_rev)}</div>
-                 </div>
-              </div>
-              <div className="border-b border-black p-1 h-8">
-                 <div className="text-[8px] text-gray-500 font-bold">Customer Engineering Approval/Date</div>
-                 <div>{formatDate(project.customer_eng_approval)}</div>
-              </div>
-              <div className="border-b border-black p-1 h-8">
-                 <div className="text-[8px] text-gray-500 font-bold">Customer Quality Approval/Date</div>
-                 <div>{formatDate(project.customer_quality_approval)}</div>
-              </div>
-              <div className="p-1 h-8">
-                 <div className="text-[8px] text-gray-500 font-bold">Other Approval/Date</div>
-                 <div>{formatDate(project.other_approval)}</div>
-              </div>
+              <div className="border-b border-black flex h-8"><div className="w-1/2 border-r border-black p-1"><div className="text-[8px] text-gray-500">Date (Orig.)</div><div>{formatDate(project.pfmea_date_orig)}</div></div><div className="w-1/2 p-1"><div className="text-[8px] text-gray-500">Date (Rev.)</div><div>{formatDate(project.pfmea_date_rev)}</div></div></div>
+              <div className="border-b border-black p-1 h-14"><div className="text-[8px] text-gray-500">Cust. Eng Approval</div><div>{formatDate(project.customer_eng_approval)}</div></div>
+              <div className="border-b border-black p-1 h-8"><div className="text-[8px] text-gray-500">Cust. QA Approval</div><div>{formatDate(project.customer_quality_approval)}</div></div>
+              <div className="p-1 h-8"><div className="text-[8px] text-gray-500">Other Approval</div><div>{formatDate(project.other_approval)}</div></div>
            </div>
         </div>
       </div>
 
-      {/* MAIN TABLE */}
+      {/* TABLE */}
       <table className="w-full border-collapse border border-black">
-        <thead>
-          <tr className="bg-gray-100 text-center font-bold">
-            <th className="border border-black p-1 w-20" rowSpan={2}>Process Function<br/>Requirements</th>
-            <th className="border border-black p-1" rowSpan={2}>Potential Failure Mode</th>
-            <th className="border border-black p-1" rowSpan={2}>Potential Effects of Failure</th>
-            <th className="border border-black p-1 w-6" rowSpan={2}>Sev</th>
-            <th className="border border-black p-1 w-6" rowSpan={2}>Cls</th>
-            <th className="border border-black p-1" rowSpan={2}>Potential Cause(s)</th>
-            
-            <th className="border border-black p-1" rowSpan={2}>Current Process Control<br/>Prevention</th>
-            <th className="border border-black p-1 w-6" rowSpan={2}>Occ</th>
-            <th className="border border-black p-1" rowSpan={2}>Current Process Control<br/>Detection</th>
-            <th className="border border-black p-1 w-6" rowSpan={2}>Det</th>
-            <th className="border border-black p-1 w-8" rowSpan={2}>RPN</th>
-            
-            <th className="border border-black p-1" rowSpan={2}>Recommended Action(s)</th>
-            <th className="border border-black p-1" rowSpan={2}>Responsibility &<br/>Target Date</th>
-            
-            <th className="border border-black p-1" colSpan={5}>Action Results</th>
-          </tr>
-          
-          <tr className="bg-gray-100 text-center font-bold">
-            <th className="border border-black p-1">Actions Taken</th>
+        <thead className="bg-gray-200 font-bold">
+          <tr>
+            <th className="border border-black p-1">Step</th>
+            <th className="border border-black p-1">Failure Mode</th>
+            <th className="border border-black p-1">Effect</th>
+            <th className="border border-black p-1 w-6">S</th>
+            <th className="border border-black p-1 w-6">Cls</th>
+            <th className="border border-black p-1">Cause</th>
+            <th className="border border-black p-1">Prevention</th>
+            <th className="border border-black p-1 w-6">O</th>
+            <th className="border border-black p-1">Detection</th>
+            <th className="border border-black p-1 w-6">D</th>
+            <th className="border border-black p-1 w-8">RPN</th>
+            <th className="border border-black p-1">Actions</th>
+            <th className="border border-black p-1">Resp</th>
+            <th className="border border-black p-1">Taken</th>
             <th className="border border-black p-1 w-6">S</th>
             <th className="border border-black p-1 w-6">O</th>
             <th className="border border-black p-1 w-6">D</th>
             <th className="border border-black p-1 w-8">RPN</th>
           </tr>
         </thead>
-        
         <tbody>
           {(steps || []).map((step) => {
              const rows = (step.pfmea_records && step.pfmea_records.length > 0) ? step.pfmea_records : [{}];
-             
              return rows.map((risk: any, index: number) => {
-               // JS Safe Lookup for Symbol
+               
+               // Safe JS Lookup for Symbol (Prevents DB Join Crash)
                const sc = scLibrary?.find((x: any) => x.id === risk?.special_char_id)
                const symbolCode = sc?.symbol_code
 
-               // RPN Calc (Handle missing values)
+               // Safe Math Calculation
                const s = Number(risk?.severity) || 0
                const o = Number(risk?.occurrence) || 0
                const d = Number(risk?.detection) || 0
@@ -193,49 +128,27 @@ export default async function FmeaPrintPage({ params }: { params: Promise<{ id: 
 
                return (
                  <tr key={risk?.id || `${step.id}-${index}`}>
-                   {/* Step Column (Merged) */}
-                   {index === 0 && (
-                     <td className="border border-black p-1 align-top font-bold bg-gray-50" rowSpan={rows.length}>
-                       <div className="font-mono text-[9px] mb-1">OP{step.step_number}</div>
-                       {step.description}
-                     </td>
-                   )}
-                   
+                   {index === 0 && <td className="border border-black p-1 align-top font-bold" rowSpan={rows.length}>{step.step_number}<br/>{step.description}</td>}
                    <td className="border border-black p-1 align-top">{risk?.failure_mode || '-'}</td>
                    <td className="border border-black p-1 align-top">{risk?.failure_effect || '-'}</td>
                    <td className="border border-black p-1 text-center align-top">{risk?.severity || ''}</td>
-                   
-                   {/* Symbol Column */}
-                   <td className="border border-black p-1 text-center align-top">
-                      {symbolCode && <SpecialSymbol code={symbolCode} />}
-                   </td>
-                   
+                   <td className="border border-black p-1 text-center align-top">{symbolCode && <SpecialSymbol code={symbolCode} />}</td>
                    <td className="border border-black p-1 align-top">{risk?.cause || '-'}</td>
                    <td className="border border-black p-1 align-top">{risk?.control_prevention || '-'}</td>
                    <td className="border border-black p-1 text-center align-top">{risk?.occurrence || ''}</td>
                    <td className="border border-black p-1 align-top">{risk?.current_controls || '-'}</td>
                    <td className="border border-black p-1 text-center align-top">{risk?.detection || ''}</td>
-                   
-                   {/* RPN 1 */}
-                   <td className="border border-black p-1 text-center font-bold bg-gray-50 align-top">
-                      {rpn}
-                   </td>
-
+                   <td className="border border-black p-1 text-center font-bold bg-gray-50 align-top">{rpn}</td>
                    <td className="border border-black p-1 align-top">{risk?.recommended_actions || '-'}</td>
                    <td className="border border-black p-1 align-top">{risk?.responsibility || '-'}</td>
                    <td className="border border-black p-1 align-top">{risk?.action_taken || '-'}</td>
-                   
                    <td className="border border-black p-1 text-center align-top">{risk?.act_severity || ''}</td>
                    <td className="border border-black p-1 text-center align-top">{risk?.act_occurrence || ''}</td>
                    <td className="border border-black p-1 text-center align-top">{risk?.act_detection || ''}</td>
-                   
-                   {/* RPN 2 */}
-                   <td className="border border-black p-1 text-center font-bold align-top">
-                      {rpn2}
-                   </td>
+                   <td className="border border-black p-1 text-center font-bold align-top">{rpn2}</td>
                  </tr>
                )
-             });
+             })
           })}
         </tbody>
       </table>
