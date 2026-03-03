@@ -1,12 +1,20 @@
 import { createClient } from '@/utils/supabase/server'
-import SpecialSymbol from '@/app/components/SpecialSymbol'
-import CustomerLogo from '@/app/components/CustomerLogo'
 
+// Safe Date Helper
 const formatDate = (dateStr: any) => {
   if (!dateStr || typeof dateStr !== 'string') return '-'
-  const date = new Date(dateStr)
-  if (isNaN(date.getTime())) return '-'
-  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  try {
+    return new Date(dateStr).toLocaleDateString('en-GB')
+  } catch (e) {
+    return '-'
+  }
+}
+
+// Safe String Helper (Prevents Object Crash)
+const safeStr = (val: any) => {
+  if (val === null || val === undefined) return ''
+  if (typeof val === 'object') return 'ERR:OBJ' // Catch objects before they crash React
+  return String(val)
 }
 
 export default async function FmeaPrintPage({ params }: { params: Promise<{ id: string }> }) {
@@ -20,101 +28,109 @@ export default async function FmeaPrintPage({ params }: { params: Promise<{ id: 
      return <div>Error loading project.</div>
   }
 
-  // 2. Fetch Data (Simple Fetch, No Joins)
+  // 2. Fetch Data (Simple)
   const { data: steps } = await supabase
     .from('process_steps')
     .select('*, pfmea_records(*)')
     .eq('project_id', id)
     .order('step_number', { ascending: true })
 
-  // 3. Fetch Library (Separate Safe Fetch)
-  const { data: scLibrary } = await supabase.from('special_characteristics').select('*')
-
   return (
-    <div className="min-h-screen bg-white text-black p-4 print-container">
-      <style>{`@media print { @page { size: landscape; margin: 5mm; } body { -webkit-print-color-adjust: exact; } .print-border-black { border-color: #000 !important; } table { font-size: 8px; } }`}</style>
+    <div className="min-h-screen bg-white text-black p-4 text-[10px] font-sans">
+      <style>{`@media print { @page { size: landscape; margin: 5mm; } body { -webkit-print-color-adjust: exact; } table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid black; padding: 2px; vertical-align: top; } }`}</style>
 
-      {/* HEADER: No DB Logo Fetch passed here, just the name */}
-      <div className="flex justify-between items-center mb-2">
-         <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
-         <CustomerLogo customer={String(project.customer || '')} />
-      </div>
-
-      <div className="mb-2 text-xs border border-black">
-        <div className="font-bold text-center p-1 border-b border-black bg-gray-100">POTENTIAL FAILURE MODE AND EFFECTS ANALYSIS (PROCESS FMEA)</div>
-        <div className="grid grid-cols-3 divide-x divide-black text-[9px]">
-             <div className="p-1">
-                 <div><strong>FMEA No:</strong> {project.pfmea_number || '-'}</div>
-                 <div><strong>Part:</strong> {project.part_number} - {project.name}</div>
-                 <div><strong>Model:</strong> {project.model || '-'}</div>
-             </div>
-             <div className="p-1">
-                 <div><strong>Core Team:</strong> {project.core_team || '-'}</div>
-                 <div><strong>Resp:</strong> {project.key_contact || '-'}</div>
-             </div>
-             <div className="p-1">
-                 <div><strong>Date Orig:</strong> {formatDate(project.pfmea_date_orig)}</div>
-                 <div><strong>Date Rev:</strong> {formatDate(project.pfmea_date_rev)}</div>
-             </div>
-         </div>
+      {/* HEADER (Simple Text Only) */}
+      <div className="mb-4">
+        <div className="flex justify-between font-bold text-lg mb-2">
+            <span>SIB APQP</span>
+            <span>{safeStr(project.customer)}</span>
+        </div>
+        <div className="border border-black p-2 bg-gray-100 font-bold text-center">
+            PROCESS FMEA
+        </div>
+        <div className="border border-black border-t-0 p-2 grid grid-cols-3 gap-4">
+            <div>
+                <div>Part: {safeStr(project.part_number)}</div>
+                <div>Name: {safeStr(project.name)}</div>
+            </div>
+            <div>
+                <div>Model: {safeStr(project.model)}</div>
+                <div>Core Team: {safeStr(project.core_team)}</div>
+            </div>
+            <div>
+                <div>Date Orig: {formatDate(project.pfmea_date_orig)}</div>
+                <div>Date Rev: {formatDate(project.pfmea_date_rev)}</div>
+            </div>
+        </div>
       </div>
 
       {/* TABLE */}
-      <table className="w-full border-collapse border border-black">
-        <thead className="bg-gray-200 font-bold">
+      <table>
+        <thead className="bg-gray-200">
           <tr>
-            <th className="border border-black p-1">Step</th>
-            <th className="border border-black p-1">Failure Mode</th>
-            <th className="border border-black p-1">Effect</th>
-            <th className="border border-black p-1 w-6">S</th>
-            <th className="border border-black p-1 w-6">Cls</th>
-            <th className="border border-black p-1">Cause</th>
-            <th className="border border-black p-1">Prevention</th>
-            <th className="border border-black p-1 w-6">O</th>
-            <th className="border border-black p-1">Detection</th>
-            <th className="border border-black p-1 w-6">D</th>
-            <th className="border border-black p-1 w-8">RPN</th>
-            <th className="border border-black p-1">Actions</th>
-            <th className="border border-black p-1">Resp</th>
-            <th className="border border-black p-1">Taken</th>
-            <th className="border border-black p-1 w-8">RPN</th>
+            <th>Step</th>
+            <th>Failure Mode</th>
+            <th>Effect</th>
+            <th className="w-6">S</th>
+            <th className="w-6">Cls</th>
+            <th>Cause</th>
+            <th>Prevention</th>
+            <th className="w-6">O</th>
+            <th>Detection</th>
+            <th className="w-6">D</th>
+            <th className="w-8">RPN</th>
+            <th>Actions</th>
+            <th>Resp</th>
+            <th>Taken</th>
+            <th className="w-8">RPN</th>
           </tr>
         </thead>
         <tbody>
           {(steps || []).map((step) => {
              const rows = (step.pfmea_records && step.pfmea_records.length > 0) ? step.pfmea_records : [{}];
+             
              return rows.map((risk: any, index: number) => {
-               // Safe Logic: Find Symbol
-               const sc = scLibrary?.find((x: any) => x.id === risk?.special_char_id)
-               const symbolCode = sc ? String(sc.symbol_code) : null
+               // Safe calculations
+               const s = Number(risk?.severity) || 0
+               const o = Number(risk?.occurrence) || 0
+               const d = Number(risk?.detection) || 0
+               const rpn = s * o * d
+
+               const s2 = Number(risk?.act_severity) || 0
+               const o2 = Number(risk?.act_occurrence) || 0
+               const d2 = Number(risk?.act_detection) || 0
+               const rpn2 = s2 * o2 * d2
 
                return (
                  <tr key={risk?.id || `${step.id}-${index}`}>
-                   {index === 0 && <td className="border border-black p-1 align-top font-bold" rowSpan={rows.length}>{step.step_number}<br/>{step.description}</td>}
-                   <td className="border border-black p-1 align-top">{risk?.failure_mode || '-'}</td>
-                   <td className="border border-black p-1 align-top">{risk?.failure_effect || '-'}</td>
-                   <td className="border border-black p-1 text-center align-top">{risk?.severity || ''}</td>
-                   <td className="border border-black p-1 text-center align-top">{symbolCode && <SpecialSymbol code={symbolCode} />}</td>
-                   <td className="border border-black p-1 align-top">{risk?.cause || '-'}</td>
-                   <td className="border border-black p-1 align-top">{risk?.control_prevention || '-'}</td>
-                   <td className="border border-black p-1 text-center align-top">{risk?.occurrence || ''}</td>
-                   <td className="border border-black p-1 align-top">{risk?.current_controls || '-'}</td>
-                   <td className="border border-black p-1 text-center align-top">{risk?.detection || ''}</td>
-                   <td className="border border-black p-1 text-center font-bold bg-gray-50 align-top">
-                      {risk ? (risk.severity * risk.occurrence * risk.detection) || '' : ''}
-                   </td>
-                   <td className="border border-black p-1 align-top">{risk?.recommended_actions || '-'}</td>
-                   <td className="border border-black p-1 align-top">{risk?.responsibility || '-'}</td>
-                   <td className="border border-black p-1 align-top">{risk?.action_taken || '-'}</td>
-                   <td className="border border-black p-1 text-center font-bold align-top">
-                      {risk ? (risk.act_severity * risk.act_occurrence * risk.act_detection) || '' : ''}
-                   </td>
+                   {index === 0 && (
+                       <td rowSpan={rows.length} className="font-bold bg-gray-50">
+                           {safeStr(step.step_number)}<br/>{safeStr(step.description)}
+                       </td>
+                   )}
+                   <td>{safeStr(risk?.failure_mode)}</td>
+                   <td>{safeStr(risk?.failure_effect)}</td>
+                   <td className="text-center">{s || ''}</td>
+                   {/* Just show text ID for class to prevent crash */}
+                   <td className="text-center">{risk?.special_char_id ? 'SC' : ''}</td>
+                   <td>{safeStr(risk?.cause)}</td>
+                   <td>{safeStr(risk?.control_prevention)}</td>
+                   <td className="text-center">{o || ''}</td>
+                   <td>{safeStr(risk?.current_controls)}</td>
+                   <td className="text-center">{d || ''}</td>
+                   <td className="text-center font-bold">{rpn || ''}</td>
+                   <td>{safeStr(risk?.recommended_actions)}</td>
+                   <td>{safeStr(risk?.responsibility)}</td>
+                   <td>{safeStr(risk?.action_taken)}</td>
+                   <td className="text-center font-bold">{rpn2 || ''}</td>
                  </tr>
                )
              })
           })}
         </tbody>
       </table>
+
+      {/* Auto Print */}
       <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
     </div>
   )
