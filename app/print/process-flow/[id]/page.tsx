@@ -1,14 +1,8 @@
 import { createClient } from '@/utils/supabase/server'
-
-// Simple date formatter
-const formatDate = (dateStr: any) => {
-  if (!dateStr) return '-'
-  try {
-    return new Date(dateStr).toLocaleDateString('en-GB')
-  } catch (e) {
-    return '-'
-  }
-}
+import FlowSymbol from '@/app/components/FlowSymbol'
+import SpecialSymbol from '@/app/components/SpecialSymbol'
+import RichText from '@/app/components/RichText'
+import CustomerLogo from '@/app/components/CustomerLogo'
 
 export default async function ProcessFlowPrintPage({
   params,
@@ -18,83 +12,166 @@ export default async function ProcessFlowPrintPage({
   const { id } = await params
   const supabase = await createClient()
   
-  // 1. Fetch Project (Basic)
-  const { data: project, error: projError } = await supabase
-    .from('projects')
-    .select('*')
-    .eq('id', id)
-    .single()
+  // 1. Fetch Project (Safe Single Fetch)
+  const { data: project, error: projError } = await supabase.from('projects').select('*').eq('id', id).single()
   
   if (projError || !project) {
-    return <div>Error loading project.</div>
+    return <div className="p-10 text-red-600">Error: Project not found.</div>
   }
 
-  // 2. Fetch Steps (Basic)
+  // 2. Fetch Logo URL (Safe check)
+  let logoUrl = null
+  if (project.customer) {
+    const { data: customerData } = await supabase
+      .from('customers')
+      .select('logo_url')
+      .eq('name', project.customer)
+      .maybeSingle()
+    if (customerData) logoUrl = customerData.logo_url
+  }
+
+  // 3. Fetch Steps (Raw Fetch - No Joins)
   const { data: steps } = await supabase
     .from('process_steps')
-    .select('*') // Simple select, no joins
+    .select('*')
     .eq('project_id', id)
     .order('step_number', { ascending: true })
 
-  // 3. Fetch Library (To get text names)
+  // 4. Fetch Library (For matching Symbols in JS)
   const { data: scLibrary } = await supabase.from('special_characteristics').select('*')
 
   return (
-    <div className="min-h-screen bg-white text-black p-4 text-xs font-sans">
-      {/* CSS for Print */}
+    <div className="min-h-screen bg-white text-black p-4 text-xs font-sans print-container">
       <style>{`
         @media print {
           @page { margin: 10mm; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid black; padding: 4px; }
+          .print-border-black { border-color: #000 !important; }
+          .no-break { break-inside: avoid; }
         }
       `}</style>
 
       {/* HEADER */}
-      <div className="mb-4 border border-black p-2">
-        <h1 className="text-xl font-bold text-center mb-2">PROCESS FLOW (BASIC)</h1>
-        <div className="grid grid-cols-2 gap-4">
-           <div><strong>Project:</strong> {project.name}</div>
-           <div><strong>Customer:</strong> {project.customer}</div>
-           <div><strong>Part No:</strong> {project.part_number}</div>
-           <div><strong>Date:</strong> {formatDate(project.created_at)}</div>
+      <div className="flex justify-between items-center mb-2">
+         <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
+         <CustomerLogo customer={project.customer || ''} logoUrl={logoUrl} />
+      </div>
+
+      <div className="border border-black mb-1">
+        <div className="border-b border-black font-bold text-lg text-center p-2 uppercase">
+          Process and Inspection Flow Chart
+        </div>
+        <div className="grid grid-cols-5 divide-x divide-black text-center bg-gray-100 font-bold border-b border-black">
+          <div className="p-1">MODEL</div>
+          <div className="p-1">CUSTOMER</div>
+          <div className="p-1">PART NAME</div>
+          <div className="p-1">PART NO</div>
+          <div className="p-1">DOC. NO.</div>
+        </div>
+        <div className="grid grid-cols-5 divide-x divide-black text-center">
+          <div className="p-1 min-h-[20px]">{project.model || '-'}</div>
+          <div className="p-1">{project.customer || '-'}</div>
+          <div className="p-1">{project.name || '-'}</div>
+          <div className="p-1">{project.part_number || '-'}</div>
+          <div className="p-1">{project.flow_number || '-'}</div>
         </div>
       </div>
 
       {/* TABLE */}
-      <table>
+      <table className="w-full border-collapse border border-black text-xs mb-4 table-fixed">
         <thead>
-          <tr className="bg-gray-100">
-            <th className="w-16">Step</th>
-            <th>Description</th>
-            <th className="w-20">Symbol</th>
-            <th className="w-20">SC</th>
-            <th className="w-32">Remarks</th>
+          <tr className="bg-gray-100 text-center">
+            <th className="border border-black p-2 w-14">Step</th>
+            <th className="border border-black p-2 w-48">Process / Operation Name</th>
+            {/* Wide Symbol Column for Branching */}
+            <th className="border border-black p-2 w-40">Symbol</th>
+            <th className="border border-black p-2 w-10">SC</th>
+            <th className="border border-black p-2">Remarks / Freq</th>
           </tr>
         </thead>
         <tbody>
-          {(steps || []).map((step) => {
-            // Find SC Name (Text only)
-            const sc = scLibrary?.find((x: any) => x.id === step.special_char_id)
+          {(steps || []).map((step, index) => {
+            const isLast = index === ((steps?.length || 1) - 1);
+            const isInspection = step.symbol_type === 'inspection';
             
+            // MANUAL MATCHING (Safe)
+            const sc = scLibrary?.find((x: any) => x.id === step.special_char_id);
+            const symbolCode = sc?.symbol_code;
+
             return (
-              <tr key={step.id}>
-                <td className="text-center font-bold">{step.step_number}</td>
-                <td>{step.description}</td>
-                <td className="text-center capitalize">{step.symbol_type || 'process'}</td>
-                <td className="text-center">{sc?.symbol_code ? '(SC)' : ''}</td>
-                <td>{step.remarks}</td>
+              <tr key={step.id} className="no-break">
+                {/* Step Number */}
+                <td className="border border-black p-2 text-center font-bold align-middle">
+                    {step.step_number || ''}
+                </td>
+                
+                {/* Description */}
+                <td className="border border-black p-2 uppercase align-middle break-words whitespace-normal">
+                  <RichText content={step.description || ''} />
+                </td>
+
+                {/* Symbol Column (Right-Shifted 75% Layout) */}
+                <td className="border border-black p-0 h-[80px] align-middle relative overflow-visible">
+                   
+                   {/* Top Line */}
+                   {index > 0 && (
+                     <div className="absolute left-3/4 top-0 w-[1px] bg-black -translate-x-1/2 z-0" style={{ height: '50%' }}></div>
+                   )}
+                   
+                   {/* Bottom Line */}
+                   {!isLast && (
+                     <div className="absolute left-3/4 top-1/2 w-[1px] bg-black -translate-x-1/2 z-0" style={{ height: '50%' }}></div>
+                   )}
+
+                   {/* OK Label */}
+                   {isInspection && !isLast && (
+                      <div className="absolute left-[78%] bottom-[5%] text-[8px] font-bold bg-white px-0.5 z-20">OK</div>
+                   )}
+
+                   {/* REJECT PATH */}
+                   {isInspection && (
+                     <>
+                        {/* Horizontal Line */}
+                        <div className="absolute top-1/2 left-[40px] right-[25%] h-[1px] bg-black z-0"></div>
+                        
+                        {/* NG Label */}
+                        <div className="absolute top-[35%] left-[65px] text-[8px] font-bold bg-white px-0.5 z-20">NG</div>
+
+                        {/* REJECT BOX */}
+                        <div className="absolute top-1/2 left-1 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-2 py-1 z-20 border border-black shadow-sm">
+                          REJECT
+                        </div>
+                     </>
+                   )}
+
+                   {/* The Symbol */}
+                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 pl-[50%]">
+                     <div className="bg-white p-1">
+                        <FlowSymbol type={step.symbol_type || 'process'} />
+                     </div>
+                   </div>
+                </td>
+
+                {/* SC Symbol */}
+                <td className="border border-black p-1 text-center align-middle">
+                  {symbolCode && (
+                    <div className="flex justify-center items-center">
+                       <SpecialSymbol code={symbolCode} />
+                    </div>
+                  )}
+                </td>
+                
+                {/* Remarks */}
+                <td className="border border-black p-2 align-top break-words whitespace-normal">
+                  <RichText content={step.remarks || ''} />
+                </td>
               </tr>
             )
           })}
         </tbody>
       </table>
-
-      <div className="mt-4 text-center text-gray-500">
-         Basic Print View - Generated {new Date().toLocaleDateString()}
-      </div>
-
+      <div className="mt-4 text-[10px] text-gray-500 text-center">Generated by SIB APQP System</div>
+      
       {/* Auto Print */}
       <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
     </div>
