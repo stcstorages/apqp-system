@@ -20,9 +20,10 @@ export default async function ProcessFlowPrintPage({
   const { id } = await params
   const supabase = await createClient()
   
-  // 1. Fetch Project (Raw, no joins to prevent crashes)
+  // 1. Fetch Project (Raw, no joins)
   const { data: project, error: projError } = await supabase.from('projects').select('*').eq('id', id).single()
   
+  // CRASH GUARD: If project doesn't exist, stop here.
   if (projError || !project) {
     return (
       <div className="p-10 text-red-600 font-bold border border-red-200 bg-red-50 m-10 rounded text-center">
@@ -34,7 +35,7 @@ export default async function ProcessFlowPrintPage({
 
   // 2. Fetch Logo URL (Safe check)
   let logoUrl = null
-  if (project.customer) {
+  if (project.customer && typeof project.customer === 'string') {
     const { data: customerData } = await supabase
       .from('customers')
       .select('logo_url')
@@ -44,14 +45,14 @@ export default async function ProcessFlowPrintPage({
     if (customerData) logoUrl = customerData.logo_url
   }
 
-  // 3. Fetch Steps (RAW FETCH - NO JOINS to prevent relationship errors)
+  // 3. Fetch Steps (RAW FETCH - NO JOINS to prevent object nesting errors)
   const { data: steps } = await supabase
     .from('process_steps')
     .select('*')
     .eq('project_id', id)
     .order('step_number', { ascending: true })
 
-  // 4. Fetch SC Library (Separate Fetch)
+  // 4. Fetch SC Library (Separate Fetch to link manually)
   const { data: scLibrary } = await supabase.from('special_characteristics').select('*')
 
   return (
@@ -104,18 +105,18 @@ export default async function ProcessFlowPrintPage({
           </tr>
         </thead>
         <tbody>
-          {/* Use strict array check */}
+          {/* Ensure steps is an array before mapping */}
           {(steps || []).map((step, index) => {
             const isLast = index === ((steps?.length || 1) - 1);
             const isInspection = step.symbol_type === 'inspection';
             
             // MANUAL LOOKUP: Safer than DB Join. Matches ID in JS.
-            // If scLibrary is missing or ID is bad, it safely returns undefined.
+            // If scLibrary is missing or ID is bad, it safely returns undefined, avoiding the crash.
             const sc = scLibrary?.find((x: any) => x.id === step.special_char_id);
             const symbolCode = sc?.symbol_code;
 
             return (
-              <tr key={step.id}>
+              <tr key={step.id} className="no-break">
                 {/* Step Number */}
                 <td className="border border-black p-2 text-center font-bold align-middle">
                     {step.step_number || ''}
@@ -183,7 +184,7 @@ export default async function ProcessFlowPrintPage({
       {/* FOOTER LEGEND */}
       <div className="border border-black text-[10px] break-inside-avoid">
         <div className="grid grid-cols-3 divide-x divide-black border-b border-black">
-          {/* Legend: Symbols */}
+          {/* Symbols Legend */}
           <div>
              <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">PROCESS SYMBOLS</div>
              <div className="grid grid-cols-2 gap-1 p-2">
@@ -195,7 +196,7 @@ export default async function ProcessFlowPrintPage({
              </div>
           </div>
           
-          {/* Legend: SC */}
+          {/* SC Legend */}
           <div>
              <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">KEY CHARACTERISTICS</div>
              <div className="p-2 space-y-1">
@@ -205,7 +206,7 @@ export default async function ProcessFlowPrintPage({
                     <SpecialSymbol code={sc.symbol_code} />
                  </div>
                ))}
-               {(!scLibrary || scLibrary.length === 0) && <div className="text-gray-400 italic">No special characteristics defined.</div>}
+               {(scLibrary?.length === 0) && <div className="text-gray-400 italic">No special characteristics defined.</div>}
              </div>
           </div>
           
@@ -222,6 +223,7 @@ export default async function ProcessFlowPrintPage({
           </div>
         </div>
         
+        {/* Footer Strip */}
         <div className="flex justify-between p-1 px-2 bg-gray-100 text-[9px]">
            <div>ISSUE NO: 1</div>
            <div>REVISION NO: 0</div>
@@ -229,6 +231,7 @@ export default async function ProcessFlowPrintPage({
         </div>
       </div>
 
+      {/* Auto Print Script */}
       <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
     </div>
   )
