@@ -4,21 +4,12 @@ import SpecialSymbol from '@/app/components/SpecialSymbol'
 import RichText from '@/app/components/RichText'
 import CustomerLogo from '@/app/components/CustomerLogo'
 
-// 1. Safe Date Helper
+// Safe Date Formatter
 const formatDate = (dateStr: string | null | undefined) => {
-  if (!dateStr) return '-'
+  if (!dateStr || typeof dateStr !== 'string') return '-'
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return '-'
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')
-}
-
-// 2. Safe Symbol Extractor
-const getSymbolCode = (scData: any) => {
-  if (!scData) return null
-  if (Array.isArray(scData)) {
-    return scData.length > 0 ? scData[0].symbol_code : null
-  }
-  return scData?.symbol_code || null
 }
 
 export default async function ProcessFlowPrintPage({
@@ -29,19 +20,19 @@ export default async function ProcessFlowPrintPage({
   const { id } = await params
   const supabase = await createClient()
   
-  // 3. Fetch Project Data (Safe)
+  // 1. Fetch Project (Raw, no joins to prevent crashes)
   const { data: project, error: projError } = await supabase.from('projects').select('*').eq('id', id).single()
   
   if (projError || !project) {
     return (
-      <div className="p-10 text-center text-red-600 font-bold border border-red-300 bg-red-50 m-10 rounded">
-        System Error: Could not load project data. <br/>
-        Please ensure the project exists.
+      <div className="p-10 text-red-600 font-bold border border-red-200 bg-red-50 m-10 rounded text-center">
+        Error: Could not load project data.<br/>
+        <span className="text-sm font-normal text-gray-700">Detailed Error: {projError?.message || 'Project ID not found'}</span>
       </div>
     )
   }
-  
-  // 4. Fetch Customer Logo (Safe)
+
+  // 2. Fetch Logo URL (Safe check)
   let logoUrl = null
   if (project.customer) {
     const { data: customerData } = await supabase
@@ -53,26 +44,18 @@ export default async function ProcessFlowPrintPage({
     if (customerData) logoUrl = customerData.logo_url
   }
 
-  // 5. Fetch Process Steps (Raw Fetch)
+  // 3. Fetch Steps (RAW FETCH - NO JOINS to prevent relationship errors)
   const { data: steps } = await supabase
     .from('process_steps')
-    .select(`
-      *,
-      special_characteristics (
-        name,
-        symbol_code,
-        description
-      )
-    `)
+    .select('*')
     .eq('project_id', id)
     .order('step_number', { ascending: true })
 
-  // 6. Fetch Legend Library
+  // 4. Fetch SC Library (Separate Fetch)
   const { data: scLibrary } = await supabase.from('special_characteristics').select('*')
 
   return (
     <div className="min-h-screen bg-white text-black p-4 text-xs font-sans print-container">
-      {/* CSS For Print Layout */}
       <style>{`
         @media print {
           @page { margin: 10mm; }
@@ -82,19 +65,17 @@ export default async function ProcessFlowPrintPage({
         }
       `}</style>
 
-      {/* --- TOP: LOGOS --- */}
+      {/* LOGO HEADER */}
       <div className="flex justify-between items-center mb-2">
          <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
-         <CustomerLogo customer={project.customer} logoUrl={logoUrl} />
+         <CustomerLogo customer={String(project.customer || '')} logoUrl={logoUrl} />
       </div>
 
-      {/* --- HEADER TABLE --- */}
+      {/* DOCUMENT HEADER */}
       <div className="border border-black mb-1">
-        <div className="border-b border-black font-bold text-lg text-center p-2 uppercase bg-gray-50">
+        <div className="border-b border-black font-bold text-lg text-center p-2 uppercase">
           Process and Inspection Flow Chart
         </div>
-        
-        {/* Header Labels */}
         <div className="grid grid-cols-5 divide-x divide-black text-center bg-gray-100 font-bold border-b border-black">
           <div className="p-1">MODEL</div>
           <div className="p-1">CUSTOMER</div>
@@ -102,10 +83,8 @@ export default async function ProcessFlowPrintPage({
           <div className="p-1">PART NO</div>
           <div className="p-1">DOC. NO.</div>
         </div>
-        
-        {/* Header Values */}
         <div className="grid grid-cols-5 divide-x divide-black text-center">
-          <div className="p-1 min-h-[24px]">{project.model || '-'}</div>
+          <div className="p-1 min-h-[20px]">{project.model || '-'}</div>
           <div className="p-1">{project.customer || '-'}</div>
           <div className="p-1">{project.name || '-'}</div>
           <div className="p-1">{project.part_number || '-'}</div>
@@ -113,45 +92,47 @@ export default async function ProcessFlowPrintPage({
         </div>
       </div>
 
-      {/* --- MAIN CONTENT TABLE --- */}
+      {/* TABLE */}
       <table className="w-full border-collapse border border-black text-xs mb-4 table-fixed">
         <thead>
           <tr className="bg-gray-100 text-center">
             <th className="border border-black p-2 w-14">Step</th>
             <th className="border border-black p-2 w-48">Process / Operation Name</th>
-            {/* Wide Symbol Column for Branching */}
             <th className="border border-black p-2 w-40">Symbol</th>
             <th className="border border-black p-2 w-10">SC</th>
             <th className="border border-black p-2">Remarks / Freq</th>
           </tr>
         </thead>
         <tbody>
+          {/* Use strict array check */}
           {(steps || []).map((step, index) => {
             const isLast = index === ((steps?.length || 1) - 1);
             const isInspection = step.symbol_type === 'inspection';
-            const symbolCode = getSymbolCode(step.special_characteristics);
+            
+            // MANUAL LOOKUP: Safer than DB Join. Matches ID in JS.
+            // If scLibrary is missing or ID is bad, it safely returns undefined.
+            const sc = scLibrary?.find((x: any) => x.id === step.special_char_id);
+            const symbolCode = sc?.symbol_code;
 
             return (
-              <tr key={step.id} className="no-break">
-                {/* 1. Step No */}
+              <tr key={step.id}>
+                {/* Step Number */}
                 <td className="border border-black p-2 text-center font-bold align-middle">
                     {step.step_number || ''}
                 </td>
                 
-                {/* 2. Description */}
+                {/* Description */}
                 <td className="border border-black p-2 uppercase align-middle break-words whitespace-normal">
                   <RichText content={step.description || ''} />
                 </td>
 
-                {/* 3. SYMBOL (The Complex Logic) */}
+                {/* Symbol Column */}
                 <td className="border border-black p-0 h-[80px] align-middle relative overflow-visible">
-                   
-                   {/* Top Vertical Line */}
+                   {/* Top Line */}
                    {index > 0 && (
                      <div className="absolute left-3/4 top-0 w-[1px] bg-black -translate-x-1/2 z-0" style={{ height: '50%' }}></div>
                    )}
-                   
-                   {/* Bottom Vertical Line */}
+                   {/* Bottom Line */}
                    {!isLast && (
                      <div className="absolute left-3/4 top-1/2 w-[1px] bg-black -translate-x-1/2 z-0" style={{ height: '50%' }}></div>
                    )}
@@ -161,23 +142,18 @@ export default async function ProcessFlowPrintPage({
                       <div className="absolute left-[78%] bottom-[5%] text-[8px] font-bold bg-white px-0.5 z-20">OK</div>
                    )}
 
-                   {/* REJECT PATH (Horizontal Left) */}
+                   {/* Reject Branch */}
                    {isInspection && (
                      <>
-                        {/* Line from Center to Left Box */}
-                        <div className="absolute top-1/2 left-[45px] right-[25%] h-[1px] bg-black z-0"></div>
-                        
-                        {/* NG Label */}
+                        <div className="absolute top-1/2 left-[40px] right-[25%] h-[1px] bg-black z-0"></div>
                         <div className="absolute top-[35%] left-[65px] text-[8px] font-bold bg-white px-0.5 z-20">NG</div>
-
-                        {/* REJECT BOX */}
-                        <div className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-2 py-1 z-20 border border-black shadow-sm">
+                        <div className="absolute top-1/2 left-1 transform -translate-y-1/2 bg-black text-white text-[8px] font-bold px-2 py-1 z-20 border border-black shadow-sm">
                           REJECT
                         </div>
                      </>
                    )}
 
-                   {/* The Symbol (Centered on 75% line) */}
+                   {/* Main Symbol */}
                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 pl-[50%]">
                      <div className="bg-white p-1">
                         <FlowSymbol type={step.symbol_type || 'process'} />
@@ -185,7 +161,7 @@ export default async function ProcessFlowPrintPage({
                    </div>
                 </td>
 
-                {/* 4. Special Char Symbol */}
+                {/* SC Symbol */}
                 <td className="border border-black p-1 text-center align-middle">
                   {symbolCode && (
                     <div className="flex justify-center items-center">
@@ -194,7 +170,7 @@ export default async function ProcessFlowPrintPage({
                   )}
                 </td>
                 
-                {/* 5. Remarks */}
+                {/* Remarks */}
                 <td className="border border-black p-2 align-top break-words whitespace-normal">
                   <RichText content={step.remarks || ''} />
                 </td>
@@ -204,11 +180,10 @@ export default async function ProcessFlowPrintPage({
         </tbody>
       </table>
 
-      {/* --- FOOTER LEGEND --- */}
+      {/* FOOTER LEGEND */}
       <div className="border border-black text-[10px] break-inside-avoid">
         <div className="grid grid-cols-3 divide-x divide-black border-b border-black">
-          
-          {/* Symbols Legend */}
+          {/* Legend: Symbols */}
           <div>
              <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">PROCESS SYMBOLS</div>
              <div className="grid grid-cols-2 gap-1 p-2">
@@ -217,11 +192,10 @@ export default async function ProcessFlowPrintPage({
                 <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="inspection"/></div> Insp.</div>
                 <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="storage"/></div> Storage</div>
                 <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="transport"/></div> Delivery</div>
-                <div className="flex items-center gap-2"><div className="scale-75"><FlowSymbol type="inprocess"/></div> In-Proc</div>
              </div>
           </div>
           
-          {/* SC Legend */}
+          {/* Legend: SC */}
           <div>
              <div className="bg-gray-100 font-bold p-1 text-center border-b border-black">KEY CHARACTERISTICS</div>
              <div className="p-2 space-y-1">
@@ -231,7 +205,7 @@ export default async function ProcessFlowPrintPage({
                     <SpecialSymbol code={sc.symbol_code} />
                  </div>
                ))}
-               {(scLibrary?.length === 0) && <div className="text-gray-400 italic">No special characteristics defined.</div>}
+               {(!scLibrary || scLibrary.length === 0) && <div className="text-gray-400 italic">No special characteristics defined.</div>}
              </div>
           </div>
           
@@ -245,13 +219,9 @@ export default async function ProcessFlowPrintPage({
              <div className="grid grid-cols-3 divide-x divide-black flex-1 min-h-[60px]">
                 <div></div><div></div><div></div>
              </div>
-             <div className="grid grid-cols-3 divide-x divide-black text-center border-t border-black text-[8px] bg-gray-50">
-                 <div className="p-1">ENG</div><div className="p-1">QA</div><div className="p-1">HOD</div>
-             </div>
           </div>
         </div>
         
-        {/* Footer Strip */}
         <div className="flex justify-between p-1 px-2 bg-gray-100 text-[9px]">
            <div>ISSUE NO: 1</div>
            <div>REVISION NO: 0</div>
@@ -259,7 +229,6 @@ export default async function ProcessFlowPrintPage({
         </div>
       </div>
 
-      {/* Auto Print Script */}
       <script dangerouslySetInnerHTML={{ __html: `window.onload = function() { window.print(); }` }} />
     </div>
   )
