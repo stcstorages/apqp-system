@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
-import CustomerLogo from '@/app/components/CustomerLogo'
 import PrintControls from '@/app/components/PrintControls'
 
+// Helper: Get ISO Week Number
 const getWeekNumber = (d: Date) => {
   if (isNaN(d.getTime())) return 0;
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -10,22 +10,24 @@ const getWeekNumber = (d: Date) => {
   return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 }
 
+// Helper: Modern Color Palette
 const getGroupColor = (index: number) => {
   const colors = [
-    { bar: 'bg-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-    { bar: 'bg-blue-500', bg: 'bg-blue-50', border: 'border-blue-200' },
-    { bar: 'bg-purple-500', bg: 'bg-purple-50', border: 'border-purple-200' },
-    { bar: 'bg-amber-500', bg: 'bg-amber-50', border: 'border-amber-200' },
-    { bar: 'bg-rose-500', bg: 'bg-rose-50', border: 'border-rose-200' },
+    { bar: 'bg-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-200' }, // Green
+    { bar: 'bg-blue-500', bg: 'bg-blue-50', border: 'border-blue-200' },       // Blue
+    { bar: 'bg-purple-500', bg: 'bg-purple-50', border: 'border-purple-200' },   // Purple
+    { bar: 'bg-amber-500', bg: 'bg-amber-50', border: 'border-amber-200' },      // Orange
+    { bar: 'bg-rose-500', bg: 'bg-rose-50', border: 'border-rose-200' },         // Red
   ]
   return colors[index % colors.length]
 }
 
+// Helper: Date Format
 const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return '-'
-  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')
+  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
 }
 
 export default async function GanttPrintPage({
@@ -43,18 +45,9 @@ export default async function GanttPrintPage({
      return <div className="p-10 text-red-600 font-bold">Error loading project: {projError?.message}</div>
   }
 
-  // 2. Safe Logo Fetch
-  let logoUrl = null
-  if (project.customer) {
-    const { data: customerData } = await supabase
-      .from('customers')
-      .select('logo_url')
-      .eq('name', project.customer)
-      .maybeSingle()
-    if (customerData) logoUrl = customerData.logo_url
-  }
-  
-  // 3. Fetch Tasks
+  // NOTE: Customer Logo Database Fetch REMOVED to prevent crashes.
+
+  // 2. Fetch Tasks (Sorted by Order)
   const { data: rawTasks } = await supabase
     .from('gantt_tasks')
     .select('*')
@@ -63,7 +56,7 @@ export default async function GanttPrintPage({
 
   const processedTasks = rawTasks?.map(t => ({ ...t })) || []
   
-  // --- LOGIC: DYNAMICALLY RECALCULATE HEADERS FOR PRINT ---
+  // --- LOGIC: DYNAMICALLY RECALCULATE HEADERS ---
   if (processedTasks.length > 0) {
     const headerIndices: number[] = []
     processedTasks.forEach((t, i) => { if (t.type === 'project') headerIndices.push(i) })
@@ -73,14 +66,12 @@ export default async function GanttPrintPage({
       const children = processedTasks.slice(headerIndex + 1, nextHeaderIndex)
       
       if (children.length > 0) {
-         // Force everything to Numbers (timestamps) for comparison
          let minStart = new Date(children[0].start_date).getTime()
          let maxEnd = new Date(children[0].end_date).getTime()
          
          children.forEach(child => {
             const s = new Date(child.start_date).getTime()
             const e = new Date(child.end_date).getTime()
-            // Strict number comparison
             if (!isNaN(s) && s < minStart) minStart = s
             if (!isNaN(e) && e > maxEnd) maxEnd = e
          })
@@ -91,32 +82,27 @@ export default async function GanttPrintPage({
     })
   }
 
-  // --- CALCULATE TIMELINE BOUNDS (Fixed Types) ---
-  let minDateMs = Date.now()
-  let maxDateMs = Date.now()
+  // --- CALCULATE TIMELINE BOUNDS ---
+  let minDate = new Date()
+  let maxDate = new Date()
   
   if (processedTasks.length > 0) {
-    minDateMs = new Date(processedTasks[0].start_date).getTime()
-    maxDateMs = new Date(processedTasks[0].end_date).getTime()
+    minDate = new Date(processedTasks[0].start_date)
+    maxDate = new Date(processedTasks[0].end_date)
     
     processedTasks.forEach(t => {
-      const s = new Date(t.start_date).getTime()
-      const e = new Date(t.end_date).getTime()
-      if (!isNaN(s) && s < minDateMs) minDateMs = s
-      if (!isNaN(e) && e > maxDateMs) maxDateMs = e
+      const s = new Date(t.start_date)
+      const e = new Date(t.end_date)
+      if (!isNaN(s.getTime()) && s < minDate) minDate = s
+      if (!isNaN(e.getTime()) && e > maxDate) maxDate = e
     })
   } else {
-    // Default range if empty
-    const now = new Date()
-    minDateMs = now.getTime()
-    maxDateMs = new Date(now.setDate(now.getDate() + 30)).getTime()
+    minDate = new Date()
+    maxDate = new Date()
+    maxDate.setDate(maxDate.getDate() + 30)
   }
 
-  // Convert back to Date objects for iteration
-  const minDate = new Date(minDateMs)
-  const maxDate = new Date(maxDateMs)
-
-  // Add buffer: Start 1 week before, End 3 weeks after
+  // Add buffer
   minDate.setDate(minDate.getDate() - 7)
   maxDate.setDate(maxDate.getDate() + 21)
 
@@ -134,16 +120,18 @@ export default async function GanttPrintPage({
     tempDate.setDate(tempDate.getDate() + 7)
   }
 
-  const getPos = (dateStr: string) => ((new Date(dateStr).getTime() - minDate.getTime()) / totalDuration) * 100
+  const getPos = (dateStr: string) => {
+     const d = new Date(dateStr); if(isNaN(d.getTime())) return 0;
+     return ((d.getTime() - minDate.getTime()) / totalDuration) * 100
+  }
   const getWidth = (startStr: string, endStr: string) => {
-      const durationMs = new Date(endStr).getTime() - new Date(startStr).getTime()
-      // Add 1 day buffer (inclusive)
-      const adjustedDuration = durationMs === 0 ? 0 : durationMs + 86400000 
-      return (adjustedDuration / totalDuration) * 100
+      const s = new Date(startStr); const e = new Date(endStr);
+      if(isNaN(s.getTime()) || isNaN(e.getTime())) return 0;
+      const durationMs = Math.max(0, e.getTime() - s.getTime() + 86400000);
+      return (durationMs / totalDuration) * 100
   }
   
   let currentGroupIndex = 0
-  let currentParentId = null
 
   return (
     <div className="min-h-screen bg-white text-gray-800 text-[10px] font-sans">
@@ -171,8 +159,9 @@ export default async function GanttPrintPage({
                 {project.customer} • {project.model} • {project.part_name}
             </div>
          </div>
-         <div className="scale-75 origin-right">
-             <CustomerLogo customer={project.customer || ''} logoUrl={logoUrl} />
+         {/* TEXT ONLY CUSTOMER NAME (Safe) */}
+         <div className="font-bold text-lg text-gray-800 uppercase">
+             {project.customer || ''}
          </div>
       </div>
 
@@ -188,13 +177,14 @@ export default async function GanttPrintPage({
           
           <div className="bg-white">
             {processedTasks?.map((task) => {
-               if (task.type === 'project') {
-                 currentGroupIndex++
-                 currentParentId = task.id
-               }
+               if (task.type === 'project') currentGroupIndex++
                const colorTheme = getGroupColor(currentGroupIndex)
                const isHeader = task.type === 'project'
                const isChild = !!task.parent_id
+
+               // Calc Duration
+               const s = new Date(task.start_date); const e = new Date(task.end_date);
+               const days = (!isNaN(s.getTime()) && !isNaN(e.getTime())) ? Math.ceil((e.getTime() - s.getTime()) / 86400000) : 0
 
                return (
                  <div 
@@ -206,7 +196,7 @@ export default async function GanttPrintPage({
                        {task.name}
                     </div>
                     <div className="w-10 text-right text-gray-400 text-[8px]">
-                       {Math.ceil((new Date(task.end_date).getTime() - new Date(task.start_date).getTime()) / (1000 * 3600 * 24))}d
+                       {days}d
                     </div>
                  </div>
                )
@@ -217,7 +207,7 @@ export default async function GanttPrintPage({
         {/* RIGHT SIDE: TIMELINE */}
         <div className="flex-1 relative overflow-hidden bg-white">
           
-          {/* Timeline Header (Reduced Height: h-6) */}
+          {/* Timeline Header */}
           <div className="h-6 bg-gray-50 border-b border-gray-200 relative whitespace-nowrap overflow-hidden">
             {weeks.map((w, i) => {
               const left = getPos(w.toISOString())
@@ -252,7 +242,6 @@ export default async function GanttPrintPage({
           {/* Bars Layer */}
           <div className="relative z-10 pt-[0px]">
              {(() => {
-                // Reset index
                 currentGroupIndex = 0
                 return processedTasks?.map((task) => {
                    if (task.type === 'project') currentGroupIndex++
