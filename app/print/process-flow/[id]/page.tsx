@@ -1,6 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
 import FlowSymbol from '@/app/components/FlowSymbol'
-import CustomerLogo from '@/app/components/CustomerLogo'
 
 // Safe Date Formatter
 const formatDate = (dateStr: any) => {
@@ -25,19 +24,7 @@ export default async function ProcessFlowPrintPage({
     return <div className="p-10 text-red-600">Error: Project not found.</div>
   }
 
-  // 2. Fetch Logo URL (Safe check)
-  let logoUrl = null
-  if (project.customer && typeof project.customer === 'string') {
-    const { data: customerData } = await supabase
-      .from('customers')
-      .select('logo_url')
-      .eq('name', project.customer)
-      .maybeSingle()
-      
-    if (customerData) logoUrl = customerData.logo_url
-  }
-
-  // 3. Fetch Steps (RAW FETCH - NO JOINS)
+  // 2. Fetch Steps (RAW FETCH - NO JOINS)
   const { data: steps } = await supabase
     .from('process_steps')
     .select('*')
@@ -55,13 +42,12 @@ export default async function ProcessFlowPrintPage({
         }
       `}</style>
 
-      {/* LOGO HEADER */}
+      {/* DOCUMENT HEADER (Logo Removed) */}
       <div className="flex justify-between items-center mb-2">
          <div className="font-bold text-xl italic text-blue-900">SIB APQP</div> 
-         <CustomerLogo customer={String(project.customer || '')} logoUrl={logoUrl} />
+         <div className="font-bold text-lg">{project.customer || ''}</div>
       </div>
 
-      {/* DOCUMENT HEADER */}
       <div className="border border-black mb-1">
         <div className="border-b border-black font-bold text-lg text-center p-2 uppercase">
           Process and Inspection Flow Chart
@@ -105,7 +91,7 @@ export default async function ProcessFlowPrintPage({
                     {step.step_number || ''}
                 </td>
                 
-                {/* Description (Plain Text for now) */}
+                {/* Description */}
                 <td className="border border-black p-2 uppercase align-middle whitespace-pre-wrap">
                   {step.description || ''}
                 </td>
@@ -147,12 +133,12 @@ export default async function ProcessFlowPrintPage({
                    </div>
                 </td>
 
-                {/* SC (Plain Text for now) */}
+                {/* SC (Placeholder for now to ensure stability) */}
                 <td className="border border-black p-1 text-center align-middle">
-                  {/* We will add SC logic back in the next step */}
+                  {/* SC Logic Removed for stability test */}
                 </td>
                 
-                {/* Remarks (Plain Text for now) */}
+                {/* Remarks */}
                 <td className="border border-black p-2 align-top whitespace-pre-wrap">
                   {step.remarks || ''}
                 </td>
